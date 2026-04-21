@@ -951,25 +951,152 @@ function DraftsView({
     setEditedText(null);
   };
 
-  // Print the letter. We use a hidden printable div and window.print().
-  // The paper-size class on body controls which @page rules apply.
-  //
-  // iOS PWA FIX: window.print() on iOS is non-blocking — it returns immediately
-  // and the print preview opens asynchronously. If we removed the body attributes
-  // right after window.print(), the CSS rules that make the print content visible
-  // stop matching before iOS has rendered the preview, so the page prints blank.
-  // We use the 'afterprint' event instead, which fires when the print flow
-  // completes (user confirms or cancels), at which point cleanup is safe.
-  const handlePrintLetter = () => {
-    document.body.setAttribute('data-print-mode', 'letter');
-    document.body.setAttribute('data-paper-size', paperSize);
-    const cleanup = () => {
-      document.body.removeAttribute('data-print-mode');
-      document.body.removeAttribute('data-paper-size');
-      window.removeEventListener('afterprint', cleanup);
+  // Build a complete standalone HTML document for printing, open it in a
+  // new window, and print from there. This approach works reliably on iOS
+  // Safari PWAs where the standard `window.print()` + `@media print` pattern
+  // produces blank pages. By building a fresh document with inline styles,
+  // there's no ambiguity about what should be rendered — the document IS
+  // only the printable content.
+  const buildPrintDocument = (mode) => {
+    const isA4 = paperSize === 'a4';
+    const greeting = editorRecipientName ? `Dear ${editorRecipientName},` : 'Hello,';
+    const letterFont = activeFontStack.replace(/"/g, '&quot;');
+    const escapedBody = (letterBody || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escapedGreeting = greeting.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escapedDate = (formattedDate || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escapedRecip = (recipientAddress || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escapedReturn = (returnAddress || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    if (mode === 'letter') {
+      const pageSize = isA4 ? 'A4 portrait' : '8.5in 11in';
+      const pageWidth = isA4 ? '210mm' : '8.5in';
+      const pageMinHeight = isA4 ? '297mm' : '11in';
+      const pagePadding = isA4 ? '25mm 22mm' : '1in';
+
+      return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Letter</title>
+<style>
+  @page { size: ${pageSize}; margin: 0; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { margin: 0; padding: 0; background: white; color: #1C1B17; }
+  .page {
+    font-family: ${letterFont};
+    font-size: ${fontSize}pt;
+    line-height: 1.6;
+    color: #1C1B17;
+    background: white;
+    width: ${pageWidth};
+    min-height: ${pageMinHeight};
+    padding: ${pagePadding};
+    box-sizing: border-box;
+  }
+  .date { text-align: right; margin-bottom: 2em; }
+  .greeting { margin-bottom: 1.2em; }
+  .body { white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div class="page">
+  ${escapedDate ? `<div class="date">${escapedDate}</div>` : ''}
+  <div class="greeting">${escapedGreeting}</div>
+  <div class="body">${escapedBody}</div>
+</div>
+</body>
+</html>`;
+    }
+
+    // Envelope mode
+    const envSize = isA4 ? '220mm 110mm' : '9.5in 4.125in';
+    const envWidth = isA4 ? '220mm' : '9.5in';
+    const envHeight = isA4 ? '110mm' : '4.125in';
+    const returnTop = isA4 ? '10mm' : '0.375in';
+    const returnLeft = isA4 ? '10mm' : '0.375in';
+    const recipTop = isA4 ? '45mm' : '1.75in';
+    const recipLeft = isA4 ? '95mm' : '4in';
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Envelope</title>
+<style>
+  @page { size: ${envSize}; margin: 0; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { margin: 0; padding: 0; background: white; color: #1C1B17; }
+  .envelope {
+    font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    color: #1C1B17;
+    background: white;
+    width: ${envWidth};
+    height: ${envHeight};
+    position: relative;
+    box-sizing: border-box;
+  }
+  .return {
+    position: absolute;
+    top: ${returnTop};
+    left: ${returnLeft};
+    font-size: 10pt;
+    line-height: 1.3;
+    white-space: pre-line;
+  }
+  .recipient {
+    position: absolute;
+    top: ${recipTop};
+    left: ${recipLeft};
+    font-size: 12pt;
+    line-height: 1.35;
+    white-space: pre-line;
+  }
+</style>
+</head>
+<body>
+<div class="envelope">
+  ${escapedReturn ? `<div class="return">${escapedReturn}</div>` : ''}
+  <div class="recipient">${escapedRecip}</div>
+</div>
+</body>
+</html>`;
+  };
+
+  // Open a popup with the print document and trigger print.
+  // This bypasses all iOS quirks with the main-page print flow.
+  const openPrintWindow = (mode) => {
+    const html = buildPrintDocument(mode);
+    const printWindow = window.open('', '_blank', 'width=800,height=1000');
+
+    if (!printWindow) {
+      alert('Please allow pop-ups for this app in your browser settings, then try Print again.');
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+
+    // Wait for the document to render before calling print — iOS needs this.
+    const triggerPrint = () => {
+      printWindow.focus();
+      printWindow.print();
+      // Close the window after printing. Small delay so print dialog can appear.
+      setTimeout(() => {
+        try { printWindow.close(); } catch (e) { /* some browsers block .close() */ }
+      }, 1000);
     };
-    window.addEventListener('afterprint', cleanup);
-    window.print();
+
+    // If the new window has already loaded, print immediately; otherwise wait.
+    if (printWindow.document.readyState === 'complete') {
+      setTimeout(triggerPrint, 200);
+    } else {
+      printWindow.onload = () => setTimeout(triggerPrint, 200);
+    }
+  };
+
+  const handlePrintLetter = () => {
+    openPrintWindow('letter');
   };
 
   const handlePrintEnvelope = () => {
@@ -977,15 +1104,7 @@ function DraftsView({
       alert('Please add the recipient\'s address first.');
       return;
     }
-    document.body.setAttribute('data-print-mode', 'envelope');
-    document.body.setAttribute('data-paper-size', paperSize);
-    const cleanup = () => {
-      document.body.removeAttribute('data-print-mode');
-      document.body.removeAttribute('data-paper-size');
-      window.removeEventListener('afterprint', cleanup);
-    };
-    window.addEventListener('afterprint', cleanup);
-    window.print();
+    openPrintWindow('envelope');
   };
 
   return (
