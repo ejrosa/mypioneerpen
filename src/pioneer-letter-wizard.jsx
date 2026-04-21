@@ -1364,18 +1364,46 @@ function PrintStyles() {
       .print-letter, .print-envelope { display: none; }
 
       @media print {
-        /* Hide all on-screen UI when printing */
-        .no-print { display: none !important; }
-        body { background: white !important; margin: 0 !important; padding: 0 !important; }
+        /* iOS PWA FIX: force solid colors to render correctly in print.
+           Without this, iOS may drop background colors AND text colors as
+           a "save ink" optimization, leaving blank or invisible content. */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
 
-        /* Show only the block that matches the current print mode */
-        body[data-print-mode="letter"] .print-letter { display: block; }
-        body[data-print-mode="envelope"] .print-envelope { display: block; }
+        /* Hide ALL screen UI, aggressively. The no-print class AND the
+           root React container both get hidden so nothing leaks through. */
+        .no-print,
+        .pioneer-outer,
+        .pioneer-card {
+          display: none !important;
+        }
+
+        /* Reset body so only print-only content renders */
+        html, body {
+          background: white !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          color: #1C1B17 !important;
+        }
+
+        /* Show only the block that matches the current print mode.
+           !important is necessary because the base .print-letter rule
+           above sets display: none and CSS specificity needs the override. */
+        body[data-print-mode="letter"] .print-letter {
+          display: block !important;
+        }
+        body[data-print-mode="envelope"] .print-envelope {
+          display: block !important;
+        }
 
         /* Shared typography defaults for both paper sizes */
         .letter-page, .envelope-page {
           font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-          color: #1C1B17;
+          color: #1C1B17 !important;
+          background: white !important;
           box-sizing: border-box;
           position: relative;
         }
@@ -1383,20 +1411,28 @@ function PrintStyles() {
           font-size: 12pt;
           line-height: 1.6;
         }
-        .letter-greeting { margin-bottom: 1.2em; }
-        .letter-body { white-space: pre-wrap; }
+        .letter-greeting {
+          margin-bottom: 1.2em;
+          color: #1C1B17 !important;
+        }
+        .letter-body {
+          white-space: pre-wrap;
+          color: #1C1B17 !important;
+        }
         .envelope-page { font-size: 11pt; }
         .envelope-return {
           position: absolute;
           font-size: 10pt;
           line-height: 1.3;
           white-space: pre-line;
+          color: #1C1B17 !important;
         }
         .envelope-recipient {
           position: absolute;
           font-size: 12pt;
           line-height: 1.35;
           white-space: pre-line;
+          color: #1C1B17 !important;
         }
 
         /* ===================================================================
