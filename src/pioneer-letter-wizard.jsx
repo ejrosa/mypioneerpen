@@ -223,6 +223,11 @@ const SAGE = '#6B8564';
 const SAGE_DARK = '#4F6548';
 const ROSE = '#B86B5E';
 
+// Support link used by the footer and About modal.
+// Replace with your real PayPal.me link (e.g. 'https://paypal.me/yourname'),
+// or set to null to hide the Support link everywhere.
+const PAYPAL_URL = 'https://paypal.me/ejrosa';
+
 const styles = {
   outer: {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif',
@@ -630,6 +635,276 @@ function InstallPrompt() {
 }
 
 // ============================================================================
+// APP FOOTER — copyright line, privacy note, and About modal trigger.
+// Appears at the bottom of every screen with minimal visual weight so it
+// doesn't compete with the app's main content.
+// ============================================================================
+
+function AppFooter() {
+  const [showAbout, setShowAbout] = useState(false);
+
+  return (
+    <>
+      <div
+        className="no-print"
+        style={{
+          marginTop: '20px',
+          paddingTop: '14px',
+          borderTop: `1px solid ${BORDER}`,
+          textAlign: 'center',
+          fontSize: '11px',
+          color: MUTED,
+          lineHeight: 1.5
+        }}
+      >
+        <div>© 2026 EJ Rosa · PioneerPen</div>
+        <div style={{ marginTop: '4px' }}>
+          Your letters are private. Nothing is saved.
+          {' '}
+          <button
+            onClick={() => setShowAbout(true)}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              font: 'inherit',
+              color: SAGE,
+              cursor: 'pointer',
+              textDecoration: 'underline'
+            }}
+          >
+            About
+          </button>
+          {PAYPAL_URL && (
+            <>
+              {' · '}
+              <a
+                href={PAYPAL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: SAGE,
+                  textDecoration: 'underline'
+                }}
+              >
+                Support this project
+              </a>
+            </>
+          )}
+        </div>
+      </div>
+
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
+    </>
+  );
+}
+
+// ============================================================================
+// ABOUT MODAL — tapping the "About" link in the footer opens this overlay.
+// Covers the whole screen on mobile; feels native with rounded corners.
+// ============================================================================
+
+function AboutModal({ onClose }) {
+  // ---------------------------------------------------------------------------
+  // CONTACT INFO — change these values to update the About page.
+  //   • instagramHandle: Instagram username (without the @)
+  //   • contactEmail: full email address
+  //   • websiteUrl: personal website (full URL with https://)
+  // Set any value to null if you don't want to show it.
+  // (The support link uses PAYPAL_URL, defined near the top of this file.)
+  // ---------------------------------------------------------------------------
+  const instagramHandle = 'itsejrosa';
+  const contactEmail = 'eunice@ejrosa.com';
+  const websiteUrl = 'https://ejrosa.com';
+  const paypalUrl = PAYPAL_URL;
+
+  return (
+    <div
+      className="no-print"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(28, 27, 23, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        zIndex: 1000
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: CARD,
+          borderRadius: '16px',
+          padding: '28px 24px',
+          maxWidth: '440px',
+          width: '100%',
+          maxHeight: '85vh',
+          overflowY: 'auto',
+          position: 'relative',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.18)'
+        }}
+      >
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          style={{
+            position: 'absolute',
+            top: '14px',
+            right: '14px',
+            background: 'none',
+            border: 'none',
+            fontSize: '24px',
+            color: MUTED,
+            cursor: 'pointer',
+            padding: '4px 10px',
+            lineHeight: 1
+          }}
+        >
+          ×
+        </button>
+
+        <h2 style={{
+          fontFamily: 'Fraunces, Georgia, serif',
+          fontSize: '22px',
+          fontWeight: 500,
+          margin: '0 0 16px 0',
+          color: INK
+        }}>
+          About PioneerPen
+        </h2>
+
+        <div style={{ fontSize: '14px', lineHeight: 1.6, color: INK }}>
+          <p style={{ margin: '0 0 14px 0' }}>
+            PioneerPen is a writing assistant that helps publishers draft
+            personal letters for the ministry — initial letters, memorial
+            invitations, comfort letters, follow-ups, and campaign letters.
+          </p>
+
+          <p style={{ margin: '0 0 14px 0' }}>
+            It's meant to help get past the blank page. The drafts it provides
+            are starting points, not finished letters. Always read, edit, and
+            personalize each draft so the letter sounds like you.
+          </p>
+
+          <h3 style={{
+            fontSize: '14px',
+            fontWeight: 600,
+            margin: '18px 0 6px 0',
+            color: INK
+          }}>
+            Privacy
+          </h3>
+          <p style={{ margin: '0 0 14px 0' }}>
+            Your letters are not stored. Each request is independent and
+            private — nothing is saved to an account, a database, or shared
+            with anyone. When you close or refresh the app, nothing remains.
+          </p>
+
+          <h3 style={{
+            fontSize: '14px',
+            fontWeight: 600,
+            margin: '18px 0 6px 0',
+            color: INK
+          }}>
+            A note on letters
+          </h3>
+          <p style={{ margin: '0 0 14px 0' }}>
+            PioneerPen does not represent any organization. The letters are
+            drafts created for the publisher to edit and send personally.
+          </p>
+
+          <h3 style={{
+            fontSize: '14px',
+            fontWeight: 600,
+            margin: '18px 0 6px 0',
+            color: INK
+          }}>
+            Contact
+          </h3>
+          <p style={{ margin: '0 0 10px 0' }}>
+            Questions or feedback? Message{' '}
+            {instagramHandle && (
+              <a
+                href={`https://instagram.com/${instagramHandle}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: SAGE, textDecoration: 'underline' }}
+              >
+                @{instagramHandle}
+              </a>
+            )}
+            {instagramHandle && contactEmail && ' on Instagram, or email '}
+            {contactEmail && (
+              <a
+                href={`mailto:${contactEmail}`}
+                style={{ color: SAGE, textDecoration: 'underline' }}
+              >
+                {contactEmail}
+              </a>
+            )}
+            .
+          </p>
+          {websiteUrl && (
+            <p style={{ margin: '0 0 14px 0' }}>
+              See more of my work at{' '}
+              <a
+                href={websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: SAGE, textDecoration: 'underline' }}
+              >
+                {websiteUrl.replace(/^https?:\/\//, '')}
+              </a>
+              .
+            </p>
+          )}
+
+          {paypalUrl && (
+            <>
+              <h3 style={{
+                fontSize: '14px',
+                fontWeight: 600,
+                margin: '18px 0 6px 0',
+                color: INK
+              }}>
+                Support this project
+              </h3>
+              <p style={{ margin: '0 0 14px 0' }}>
+                PioneerPen is a personal project. If you've found it useful
+                and want to help cover the server and development costs,{' '}
+                <a
+                  href={paypalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: SAGE, textDecoration: 'underline' }}
+                >
+                  you can support it here
+                </a>
+                . Entirely optional and always appreciated.
+              </p>
+            </>
+          )}
+
+          <div style={{
+            borderTop: `1px solid ${BORDER}`,
+            marginTop: '20px',
+            paddingTop: '14px',
+            fontSize: '12px',
+            color: MUTED,
+            textAlign: 'center'
+          }}>
+            © 2026 EJ Rosa · PioneerPen
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
@@ -794,6 +1069,8 @@ export default function PioneerLetterWizard() {
             {step === TOTAL_STEPS - 1 ? 'Write the drafts' : 'Next'}
           </button>
         </div>
+
+        <AppFooter />
       </div>
     </div>
   );
@@ -1437,6 +1714,8 @@ function DraftsView({
             If your printout shows a URL or date, uncheck "Headers and footers" in the print dialog.
           </span>
         </div>
+
+        <AppFooter />
       </div>
 
       {/* ---------- PRINTABLE LETTER (visible only when printing the letter) ---------- */}
