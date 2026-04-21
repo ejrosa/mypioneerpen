@@ -1360,46 +1360,73 @@ function PrintStyles() {
     const style = document.createElement('style');
     style.id = 'pioneer-print-styles';
     style.textContent = `
-      /* Screen defaults: hide print-only blocks */
-      .print-letter, .print-envelope { display: none; }
+      /* ===================================================================
+         iOS-SAFE PRINT STRATEGY
+         Instead of 'display: none' + '@media print { display: block }' which
+         is unreliable in iOS Safari PWAs, we keep print content rendered
+         at all times but positioned FAR off-screen. At print time we bring
+         it into view. This guarantees the browser has already laid out the
+         content, so print doesn't catch a collapsed/empty box.
+         =================================================================== */
+
+      /* Screen: push print-only content far off-screen but KEEP it rendered.
+         Using position: absolute + large negative left, not display: none. */
+      .print-letter, .print-envelope {
+        position: absolute;
+        left: -10000px;
+        top: 0;
+        width: 210mm;           /* sensible default so layout computes */
+        background: white;
+        color: #1C1B17;
+        pointer-events: none;
+        z-index: -1;
+      }
 
       @media print {
-        /* iOS PWA FIX: force solid colors to render correctly in print.
-           Without this, iOS may drop background colors AND text colors as
-           a "save ink" optimization, leaving blank or invisible content. */
+        /* Force iOS to preserve colors and not "optimize" them away */
         * {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
           color-adjust: exact !important;
         }
 
-        /* Hide ALL screen UI, aggressively. The no-print class AND the
-           root React container both get hidden so nothing leaks through. */
+        /* Hide the screen UI wrappers when printing */
         .no-print,
         .pioneer-outer,
         .pioneer-card {
           display: none !important;
         }
 
-        /* Reset body so only print-only content renders */
+        /* Reset body/html so only print content shows */
         html, body {
           background: white !important;
           margin: 0 !important;
           padding: 0 !important;
           color: #1C1B17 !important;
+          width: auto !important;
+          height: auto !important;
         }
 
-        /* Show only the block that matches the current print mode.
-           !important is necessary because the base .print-letter rule
-           above sets display: none and CSS specificity needs the override. */
-        body[data-print-mode="letter"] .print-letter {
-          display: block !important;
-        }
+        /* Bring the relevant print block INTO view during print.
+           Inverse of the off-screen positioning above. */
+        body[data-print-mode="letter"] .print-letter,
         body[data-print-mode="envelope"] .print-envelope {
+          position: static !important;
+          left: auto !important;
+          top: auto !important;
+          width: auto !important;
+          pointer-events: auto !important;
+          z-index: auto !important;
           display: block !important;
         }
 
-        /* Shared typography defaults for both paper sizes */
+        /* Hide the OTHER print block so only one mode shows at a time */
+        body[data-print-mode="letter"] .print-envelope,
+        body[data-print-mode="envelope"] .print-letter {
+          display: none !important;
+        }
+
+        /* Shared typography for letter and envelope pages */
         .letter-page, .envelope-page {
           font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
           color: #1C1B17 !important;
@@ -1436,8 +1463,7 @@ function PrintStyles() {
         }
 
         /* ===================================================================
-           A4 PAPER — 210 x 297 mm with DL envelope 220 x 110 mm
-           A tri-fold (into thirds, each ~99mm) fits a DL envelope.
+           A4 + DL envelope
            =================================================================== */
         body[data-paper-size="a4"] .letter-page {
           width: 210mm;
@@ -1450,13 +1476,6 @@ function PrintStyles() {
         }
         body[data-paper-size="a4"] .envelope-return { top: 10mm; left: 10mm; }
         body[data-paper-size="a4"] .envelope-recipient { top: 45mm; left: 95mm; }
-
-        /* ===================================================================
-           Blank out browser-injected headers and footers on every page.
-           By declaring empty @top-left/etc. margin boxes, we tell the browser
-           that the URL, title, date, and page number should not be rendered.
-           This has to be done per @page rule — it's not global.
-           =================================================================== */
 
         @page a4-letter {
           size: A4 portrait;
@@ -1482,7 +1501,7 @@ function PrintStyles() {
         body[data-paper-size="a4"][data-print-mode="envelope"] .envelope-page { page: a4-envelope; }
 
         /* ===================================================================
-           US LETTER — 8.5 x 11 in with #10 envelope 9.5 x 4.125 in
+           US Letter + #10 envelope
            =================================================================== */
         body[data-paper-size="letter"] .letter-page {
           width: 8.5in;
