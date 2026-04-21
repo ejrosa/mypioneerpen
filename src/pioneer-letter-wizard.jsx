@@ -937,12 +937,23 @@ function DraftsView({
 
   // Print the letter. We use a hidden printable div and window.print().
   // The paper-size class on body controls which @page rules apply.
+  //
+  // iOS PWA FIX: window.print() on iOS is non-blocking — it returns immediately
+  // and the print preview opens asynchronously. If we removed the body attributes
+  // right after window.print(), the CSS rules that make the print content visible
+  // stop matching before iOS has rendered the preview, so the page prints blank.
+  // We use the 'afterprint' event instead, which fires when the print flow
+  // completes (user confirms or cancels), at which point cleanup is safe.
   const handlePrintLetter = () => {
     document.body.setAttribute('data-print-mode', 'letter');
     document.body.setAttribute('data-paper-size', paperSize);
+    const cleanup = () => {
+      document.body.removeAttribute('data-print-mode');
+      document.body.removeAttribute('data-paper-size');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
     window.print();
-    document.body.removeAttribute('data-print-mode');
-    document.body.removeAttribute('data-paper-size');
   };
 
   const handlePrintEnvelope = () => {
@@ -952,9 +963,13 @@ function DraftsView({
     }
     document.body.setAttribute('data-print-mode', 'envelope');
     document.body.setAttribute('data-paper-size', paperSize);
+    const cleanup = () => {
+      document.body.removeAttribute('data-print-mode');
+      document.body.removeAttribute('data-paper-size');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
     window.print();
-    document.body.removeAttribute('data-print-mode');
-    document.body.removeAttribute('data-paper-size');
   };
 
   return (
