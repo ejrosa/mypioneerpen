@@ -1282,6 +1282,10 @@ function DraftsView({
             : 'Letters print on US Letter (8.5 × 11 in) and fold into thirds for a #10 envelope.'}
           <br />
           Choose "Save as PDF" in the print dialog to keep a digital copy.
+          <br />
+          <span style={{ fontSize: '11px' }}>
+            If your printout shows a URL or date, uncheck "Headers and footers" in the print dialog.
+          </span>
         </div>
       </div>
 
@@ -1380,11 +1384,33 @@ function PrintStyles() {
         body[data-paper-size="a4"] .envelope-return { top: 10mm; left: 10mm; }
         body[data-paper-size="a4"] .envelope-recipient { top: 45mm; left: 95mm; }
 
-        body[data-paper-size="a4"][data-print-mode="letter"] {
-          /* A4 page dimensions for the letter mode */
+        /* ===================================================================
+           Blank out browser-injected headers and footers on every page.
+           By declaring empty @top-left/etc. margin boxes, we tell the browser
+           that the URL, title, date, and page number should not be rendered.
+           This has to be done per @page rule — it's not global.
+           =================================================================== */
+
+        @page a4-letter {
+          size: A4 portrait;
+          margin: 0;
+          @top-left     { content: ""; }
+          @top-center   { content: ""; }
+          @top-right    { content: ""; }
+          @bottom-left  { content: ""; }
+          @bottom-center{ content: ""; }
+          @bottom-right { content: ""; }
         }
-        @page a4-letter { size: A4 portrait; margin: 0; }
-        @page a4-envelope { size: 220mm 110mm; margin: 0; }
+        @page a4-envelope {
+          size: 220mm 110mm;
+          margin: 0;
+          @top-left     { content: ""; }
+          @top-center   { content: ""; }
+          @top-right    { content: ""; }
+          @bottom-left  { content: ""; }
+          @bottom-center{ content: ""; }
+          @bottom-right { content: ""; }
+        }
         body[data-paper-size="a4"][data-print-mode="letter"] .letter-page { page: a4-letter; }
         body[data-paper-size="a4"][data-print-mode="envelope"] .envelope-page { page: a4-envelope; }
 
@@ -1403,8 +1429,26 @@ function PrintStyles() {
         body[data-paper-size="letter"] .envelope-return { top: 0.375in; left: 0.375in; }
         body[data-paper-size="letter"] .envelope-recipient { top: 1.75in; left: 4in; }
 
-        @page us-letter { size: 8.5in 11in; margin: 0; }
-        @page us-envelope { size: 9.5in 4.125in; margin: 0; }
+        @page us-letter {
+          size: 8.5in 11in;
+          margin: 0;
+          @top-left     { content: ""; }
+          @top-center   { content: ""; }
+          @top-right    { content: ""; }
+          @bottom-left  { content: ""; }
+          @bottom-center{ content: ""; }
+          @bottom-right { content: ""; }
+        }
+        @page us-envelope {
+          size: 9.5in 4.125in;
+          margin: 0;
+          @top-left     { content: ""; }
+          @top-center   { content: ""; }
+          @top-right    { content: ""; }
+          @bottom-left  { content: ""; }
+          @bottom-center{ content: ""; }
+          @bottom-right { content: ""; }
+        }
         body[data-paper-size="letter"][data-print-mode="letter"] .letter-page { page: us-letter; }
         body[data-paper-size="letter"][data-print-mode="envelope"] .envelope-page { page: us-envelope; }
       }
