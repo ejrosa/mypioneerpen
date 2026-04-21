@@ -228,22 +228,34 @@ const styles = {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif',
     background: PARCHMENT,
     color: INK,
+    // Fill the entire viewport on phones, including the safe-area insets
+    // so content doesn't hide behind iPhone notches or Android gesture bars.
     minHeight: '100vh',
-    padding: '24px 16px',
+    minHeight: '100dvh',  // 'dvh' = dynamic viewport height, accounts for mobile browser chrome
+    padding: 0,
     display: 'flex',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    alignItems: 'stretch'
   },
   phone: {
+    // On mobile: fills edge-to-edge, full height. On desktop: bounded card.
     width: '100%',
     maxWidth: '440px',
     background: CARD,
-    border: `1px solid ${BORDER}`,
-    borderRadius: '24px',
-    padding: '28px 24px 24px',
+    // Border and shadow only visible on desktop via media query below.
+    // On mobile the card visually IS the page.
+    border: 'none',
+    borderRadius: 0,
+    boxShadow: 'none',
+    // Safe-area padding for iPhone notches and home indicators,
+    // plus comfortable reading padding on all sides.
+    padding: 'max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left))',
     display: 'flex',
     flexDirection: 'column',
-    minHeight: '620px',
-    boxShadow: '0 2px 20px rgba(0,0,0,0.04)'
+    // Fill the screen height on mobile so buttons are always reachable at the bottom.
+    minHeight: '100vh',
+    minHeight: '100dvh',
+    boxSizing: 'border-box'
   },
   stepLabel: {
     fontSize: '13px',
@@ -701,10 +713,10 @@ export default function PioneerLetterWizard() {
   // ---------- LOADING SCREEN ----------
   if (loading) {
     return (
-      <div style={styles.outer}>
+      <div className="pioneer-outer" style={styles.outer}>
         <FontLink />
         <InstallPrompt />
-        <div style={styles.phone}>
+        <div className="pioneer-card" style={styles.phone}>
           <div style={styles.loadingWrap}>
             <Spinner />
             <div style={{ fontSize: '16px' }}>Writing three drafts…</div>
@@ -736,30 +748,34 @@ export default function PioneerLetterWizard() {
 
   // ---------- WIZARD SCREENS ----------
   return (
-    <div style={styles.outer}>
+    <div className="pioneer-outer" style={styles.outer}>
       <FontLink />
       <InstallPrompt />
-      <div style={styles.phone}>
+      <div className="pioneer-card" style={styles.phone}>
         <div style={styles.stepLabel}>Step {step + 1} of {TOTAL_STEPS}</div>
         <div style={styles.progressTrack}>
           <div style={{ ...styles.progressFill, width: `${((step + 1) / TOTAL_STEPS) * 100}%` }} />
         </div>
 
-        {error && <div style={styles.errorBox}>{error}</div>}
+        {/* Scrollable content area — content overflows inside here, */}
+        {/* not on the page, so buttons stay pinned to the bottom. */}
+        <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          {error && <div style={styles.errorBox}>{error}</div>}
 
-        {step === 0 && <StepLetterType letterType={letterType} setLetterType={handleLetterTypeChange} /> }
-        {step === 1 && <StepRecipient name={name} setName={setName} />}
-        {step === 2 && (
-          <StepSituation
-            letterType={letterType}
-            situation={situation}
-            setSituation={setSituation}
-            topic={topic}
-            setTopic={setTopic}
-          />
-        )}
-        {step === 3 && <StepTone tone={tone} setTone={setTone} recommended={recommendedTone[letterType]} />}
-        {step === 4 && <StepLength length={length} setLength={setLength} />}
+          {step === 0 && <StepLetterType letterType={letterType} setLetterType={handleLetterTypeChange} /> }
+          {step === 1 && <StepRecipient name={name} setName={setName} />}
+          {step === 2 && (
+            <StepSituation
+              letterType={letterType}
+              situation={situation}
+              setSituation={setSituation}
+              topic={topic}
+              setTopic={setTopic}
+            />
+          )}
+          {step === 3 && <StepTone tone={tone} setTone={setTone} recommended={recommendedTone[letterType]} />}
+          {step === 4 && <StepLength length={length} setLength={setLength} />}
+        </div>
 
         <div style={styles.buttonRow}>
           {step > 0 && (
@@ -973,13 +989,13 @@ function DraftsView({
   };
 
   return (
-    <div style={styles.outer}>
+    <div className="pioneer-outer" style={styles.outer}>
       <FontLink />
       <PrintStyles />
       <InstallPrompt />
 
       {/* ---------- SCREEN UI (hidden during print) ---------- */}
-      <div className="no-print" style={{ ...styles.phone, minHeight: 'auto', maxWidth: '560px' }}>
+      <div className="no-print pioneer-card" style={{ ...styles.phone, minHeight: 'auto', maxWidth: '560px' }}>
         <h1 style={styles.heading}>Your drafts</h1>
         <div style={{ fontSize: '14px', color: MUTED, marginBottom: '18px' }}>
           Pick a draft, edit it if you like, then print or make an envelope.
@@ -1800,13 +1816,43 @@ function StepLength({ length, setLength }) {
 
 function FontLink() {
   // Injects the Fraunces font once. Fallbacks handle cases where it can't load.
+  // Also injects a small responsive stylesheet so the app feels phone-native
+  // (edge-to-edge, fills screen) on mobile, while still looking like a centered
+  // card on tablets and desktops.
   useEffect(() => {
-    if (document.getElementById('pioneer-font')) return;
-    const link = document.createElement('link');
-    link.id = 'pioneer-font';
-    link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap';
-    document.head.appendChild(link);
+    if (!document.getElementById('pioneer-font')) {
+      const link = document.createElement('link');
+      link.id = 'pioneer-font';
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap';
+      document.head.appendChild(link);
+    }
+    if (!document.getElementById('pioneer-responsive')) {
+      const style = document.createElement('style');
+      style.id = 'pioneer-responsive';
+      style.textContent = `
+        /* Prevent iOS from zooming in when the user taps an input — we already use 16px+ fonts */
+        html { -webkit-text-size-adjust: 100%; }
+        body { margin: 0; overscroll-behavior: none; }
+
+        /* On tablet and desktop, restore the floating-card appearance. */
+        @media (min-width: 520px) {
+          .pioneer-outer {
+            padding: 24px 16px !important;
+            align-items: flex-start !important;
+          }
+          .pioneer-card {
+            min-height: 620px !important;
+            max-height: calc(100dvh - 48px);
+            border: 1px solid ${BORDER} !important;
+            border-radius: 24px !important;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.04) !important;
+            padding: 28px 24px 24px !important;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
   }, []);
   return null;
 }
