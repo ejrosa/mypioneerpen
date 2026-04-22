@@ -1251,6 +1251,533 @@ function FeedbackForm({ type }) {
 }
 
 // ============================================================================
+// FLOATING TIMER — persistent stopwatch for tracking ministry letter time.
+// Designed to match the app's quiet parchment-and-ink aesthetic.
+// Sessions are saved to localStorage so they survive app closes.
+// ============================================================================
+
+function FloatingTimer() {
+  const [running, setRunning]           = useState(false);
+  const [startTime, setStartTime]       = useState(null);
+  const [elapsed, setElapsed]           = useState(0);
+  const [sessions, setSessions]         = useState([]);
+  const [showSessions, setShowSessions] = useState(false);
+  const [toast, setToast]               = useState(null);
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const pad = (n) => String(n).padStart(2, '0');
+
+  const formatElapsed = (secs) => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return h > 0
+      ? `${h}:${pad(m)}:${pad(s)}`
+      : `${pad(m)}:${pad(s)}`;
+  };
+
+  const formatDuration = (secs) => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    if (h > 0 && m > 0) return `${h}h ${m}m`;
+    if (h > 0) return `${h}h`;
+    if (m === 0) return '< 1m';
+    return `${m}m`;
+  };
+
+  const formatDate = (iso) => {
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    if (iso === today) return 'Today';
+    if (iso === yesterday) return 'Yesterday';
+    return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const formatTime = (ts) =>
+    new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+  const monthTotal = () => {
+    const now = new Date();
+    return sessions
+      .filter(s => {
+        const d = new Date(s.date + 'T00:00:00');
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      })
+      .reduce((sum, s) => sum + s.duration, 0);
+  };
+
+  const showToast = (text) => {
+    const key = Date.now();
+    setToast({ text, key });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // ── Restore from localStorage on mount ────────────────────────────────────
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('pioneerTimerStart');
+      if (saved) {
+        const ts = parseInt(saved);
+        setStartTime(ts);
+        setRunning(true);
+        setElapsed(Math.floor((Date.now() - ts) / 1000));
+      }
+      const savedSessions = localStorage.getItem('pioneerSessions');
+      if (savedSessions) setSessions(JSON.parse(savedSessions));
+    } catch {}
+  }, []);
+
+  // ── Tick ───────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!running || !startTime) return;
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [running, startTime]);
+
+  // ── Start / Stop ──────────────────────────────────────────────────────────
+  const handleStart = () => {
+    const now = Date.now();
+    setStartTime(now);
+    setRunning(true);
+    setElapsed(0);
+    try { localStorage.setItem('pioneerTimerStart', String(now)); } catch {}
+  };
+
+  const handleStop = () => {
+    const end = Date.now();
+    const duration = Math.floor((end - startTime) / 1000);
+    const session = {
+      id: String(end),
+      date: new Date().toISOString().split('T')[0],
+      startTime,
+      endTime: end,
+      duration
+    };
+    const updated = [session, ...sessions];
+    setSessions(updated);
+    setRunning(false);
+    setStartTime(null);
+    setElapsed(0);
+    showToast(`${formatDuration(duration)} logged`);
+    try {
+      localStorage.removeItem('pioneerTimerStart');
+      localStorage.setItem('pioneerSessions', JSON.stringify(updated));
+    } catch {}
+  };
+
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  const deleteSession = (id) => {
+    const updated = sessions.filter(s => s.id !== id);
+    setSessions(updated);
+    try { localStorage.setItem('pioneerSessions', JSON.stringify(updated)); } catch {}
+  };
+
+  const clearAll = () => {
+    setSessions([]);
+    setConfirmClear(false);
+    try { localStorage.removeItem('pioneerSessions'); } catch {}
+  };
+
+  const fabBottom = `calc(${TAB_BAR_H}px + env(safe-area-inset-bottom) + 14px)`;
+
+  return (
+    <>
+      <style>{`
+        @keyframes pioneer-timer-breathe {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0.65; }
+        }
+        @keyframes pioneer-timer-toast {
+          0%   { opacity: 0; transform: translateY(6px) scale(0.97); }
+          15%  { opacity: 1; transform: translateY(0) scale(1); }
+          80%  { opacity: 1; }
+          100% { opacity: 0; }
+        }
+      `}</style>
+
+      {/* ── Toast notification ──────────────────────────────────────────────── */}
+      {toast && (
+        <div
+          key={toast.key}
+          className="no-print"
+          style={{
+            position: 'fixed',
+            top: `calc(env(safe-area-inset-top) + 80px)`,
+            left: '14px',
+            background: CARD,
+            border: `1px solid ${BORDER}`,
+            color: SAGE_DARK,
+            fontSize: '12px',
+            fontWeight: 600,
+            padding: '7px 13px',
+            borderRadius: '20px',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+            zIndex: 300,
+            letterSpacing: '0.02em',
+            animation: 'pioneer-timer-toast 3s ease-out forwards',
+            pointerEvents: 'none'
+          }}
+        >
+          ✦ {toast.text}
+        </div>
+      )}
+
+      {/* ── Floating timer pill ─────────────────────────────────────────────── */}
+      <div
+        className="no-print"
+        style={{
+          position: 'fixed',
+          top: `calc(env(safe-area-inset-top) + 14px)`,
+          left: '14px',
+          zIndex: 200,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          gap: '5px'
+        }}
+      >
+        {/* Main pill button */}
+        <button
+          onClick={running ? handleStop : handleStart}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: running ? '10px 16px' : '9px 15px',
+            background: running ? INK : SAGE,
+            border: `1.5px solid ${running ? INK : SAGE_DARK}`,
+            borderRadius: '30px',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            boxShadow: running
+              ? '0 4px 20px rgba(28,27,23,0.25)'
+              : '0 4px 14px rgba(107,133,100,0.35)',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          {running ? (
+            <>
+              {/* Breathing dot */}
+              <span style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                background: ROSE,
+                flexShrink: 0,
+                animation: 'pioneer-timer-breathe 1.6s ease-in-out infinite'
+              }} />
+              {/* Elapsed time */}
+              <span style={{
+                fontSize: '15px',
+                fontWeight: 800,
+                color: PARCHMENT,
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: '0.06em',
+                minWidth: '52px',
+                textAlign: 'left',
+                textTransform: 'uppercase'
+              }}>
+                {formatElapsed(elapsed)}
+              </span>
+              {/* Stop label */}
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 800,
+                color: PARCHMENT,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase'
+              }}>
+                STOP
+              </span>
+            </>
+          ) : (
+            <>
+              {/* Pen nib icon — white when on green background */}
+              <svg width="13" height="16" viewBox="0 0 13 16" fill="none">
+                <path d="M6.5 0 L3 8 L5 9 L6.5 12 L8 9 L10 8 Z" fill={PARCHMENT}/>
+                <line x1="6.5" y1="2" x2="6.5" y2="9"
+                  stroke={SAGE} strokeWidth="0.8" strokeLinecap="round"/>
+                <circle cx="6.5" cy="14" r="1.5" fill={PARCHMENT} opacity="0.8"/>
+              </svg>
+              {/* Label */}
+              <span style={{
+                fontSize: '12px',
+                fontWeight: 800,
+                color: PARCHMENT,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase'
+              }}>
+                START TIMER
+              </span>
+            </>
+          )}
+        </button>
+
+        {/* Sessions link — only when stopped */}
+        {!running && sessions.length > 0 && (
+          <button
+            onClick={() => setShowSessions(true)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '11px',
+              color: MUTED,
+              fontFamily: 'inherit',
+              padding: '2px 6px',
+              letterSpacing: '0.04em',
+              textDecoration: 'underline',
+              textDecorationStyle: 'dotted',
+              textUnderlineOffset: '3px',
+              textAlign: 'left'
+            }}
+          >
+            {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+          </button>
+        )}
+      </div>
+
+      {/* ── Sessions bottom sheet ───────────────────────────────────────────── */}
+      {showSessions && (
+        <div
+          className="no-print"
+          onClick={() => setShowSessions(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(28,27,23,0.45)',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            zIndex: 500
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: PARCHMENT,
+              borderRadius: '20px 20px 0 0',
+              width: '100%',
+              maxWidth: '500px',
+              maxHeight: '72vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 -4px 30px rgba(28,27,23,0.12)',
+              paddingBottom: 'env(safe-area-inset-bottom)'
+            }}
+          >
+            {/* Handle bar */}
+            <div style={{
+              width: '36px', height: '4px',
+              background: BORDER, borderRadius: '2px',
+              margin: '12px auto 0',
+              flexShrink: 0
+            }} />
+
+            {/* Header */}
+            <div style={{
+              padding: '16px 20px 12px',
+              borderBottom: `1px solid ${BORDER}`,
+              flexShrink: 0
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start'
+              }}>
+                <div>
+                  <div style={{
+                    fontFamily: 'Fraunces, Georgia, serif',
+                    fontSize: '18px',
+                    fontWeight: 500,
+                    fontStyle: 'italic',
+                    color: INK
+                  }}>
+                    Letter-writing time
+                  </div>
+                  <div style={{
+                    fontSize: '13px',
+                    color: MUTED,
+                    marginTop: '3px'
+                  }}>
+                    This month —{' '}
+                    <span style={{ color: SAGE_DARK, fontWeight: 600 }}>
+                      {formatDuration(monthTotal())}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowSessions(false)}
+                  style={{
+                    background: 'none', border: 'none',
+                    fontSize: '20px', color: MUTED,
+                    cursor: 'pointer', padding: '0 4px',
+                    lineHeight: 1
+                  }}
+                >×</button>
+              </div>
+            </div>
+
+            {/* Session list */}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '8px 20px 20px' }}>
+              {sessions.length === 0 ? (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '48px 0',
+                  color: MUTED,
+                  fontSize: '14px',
+                  fontStyle: 'italic',
+                  fontFamily: 'Fraunces, Georgia, serif'
+                }}>
+                  No sessions recorded yet.
+                </div>
+              ) : (
+                <>
+                  {sessions.map((s, i) => (
+                    <div
+                      key={s.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '13px 0',
+                        borderBottom: i < sessions.length - 1 ? `1px solid ${BORDER}` : 'none'
+                      }}
+                    >
+                      <div>
+                        <div style={{
+                          fontSize: '14px',
+                          fontWeight: 600,
+                          color: INK
+                        }}>
+                          {formatDate(s.date)}
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: MUTED,
+                          marginTop: '2px',
+                          letterSpacing: '0.01em'
+                        }}>
+                          {formatTime(s.startTime)} – {formatTime(s.endTime)}
+                        </div>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '14px'
+                      }}>
+                        <span style={{
+                          fontSize: '16px',
+                          fontWeight: 700,
+                          color: SAGE,
+                          fontVariantNumeric: 'tabular-nums',
+                          fontFamily: 'Fraunces, Georgia, serif',
+                          fontStyle: 'italic'
+                        }}>
+                          {formatDuration(s.duration)}
+                        </span>
+                        <button
+                          onClick={() => deleteSession(s.id)}
+                          style={{
+                            background: 'none', border: 'none',
+                            color: BORDER, cursor: 'pointer',
+                            fontSize: '16px', padding: '2px 4px',
+                            lineHeight: 1,
+                            transition: 'color 0.15s'
+                          }}
+                          onMouseOver={e => e.currentTarget.style.color = ROSE}
+                          onMouseOut={e => e.currentTarget.style.color = BORDER}
+                        >×</button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {!confirmClear ? (
+                    <button
+                      onClick={() => setConfirmClear(true)}
+                      style={{
+                        width: '100%',
+                        marginTop: '20px',
+                        padding: '11px',
+                        background: 'none',
+                        border: `1px solid ${BORDER}`,
+                        borderRadius: '10px',
+                        color: MUTED,
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        fontSize: '12px',
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase'
+                      }}
+                    >
+                      Clear all sessions
+                    </button>
+                  ) : (
+                    <div style={{
+                      marginTop: '20px',
+                      padding: '14px',
+                      background: '#FFF0EE',
+                      border: `1px solid ${ROSE}`,
+                      borderRadius: '10px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: '13px',
+                        color: INK,
+                        marginBottom: '12px',
+                        fontWeight: 500
+                      }}>
+                        Clear all sessions?
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => setConfirmClear(false)}
+                          style={{
+                            flex: 1,
+                            padding: '9px',
+                            background: 'none',
+                            border: `1px solid ${BORDER}`,
+                            borderRadius: '8px',
+                            color: MUTED,
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                            fontSize: '13px'
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={clearAll}
+                          style={{
+                            flex: 1,
+                            padding: '9px',
+                            background: ROSE,
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: '#fff',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                            fontSize: '13px',
+                            fontWeight: 600
+                          }}
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ============================================================================
 // APP FOOTER — copyright line, privacy note, and About modal trigger.
 // Appears at the bottom of every screen with minimal visual weight so it
 // doesn't compete with the app's main content.
@@ -1625,6 +2152,7 @@ export default function PioneerLetterWizard() {
     return (
       <>
         <FeedbackForm type="ticket" />
+        <FloatingTimer />
         <BottomTabBar activeTab={currentTab} setActiveTab={setCurrentTab} />
       </>
     );
@@ -1634,6 +2162,7 @@ export default function PioneerLetterWizard() {
     return (
       <>
         <FeedbackForm type="suggest" />
+        <FloatingTimer />
         <BottomTabBar activeTab={currentTab} setActiveTab={setCurrentTab} />
       </>
     );
@@ -1656,6 +2185,7 @@ export default function PioneerLetterWizard() {
             </div>
           </div>
         </div>
+        <FloatingTimer />
         <BottomTabBar activeTab={currentTab} setActiveTab={setCurrentTab} />
       </>
     );
@@ -1677,6 +2207,7 @@ export default function PioneerLetterWizard() {
           length={length}
           onStartOver={handleStartOver}
         />
+        <FloatingTimer />
         <BottomTabBar activeTab={currentTab} setActiveTab={setCurrentTab} />
       </>
     );
@@ -1735,7 +2266,8 @@ export default function PioneerLetterWizard() {
         <AppFooter />
       </div>
     </div>
-      <BottomTabBar activeTab={currentTab} setActiveTab={setCurrentTab} />
+      <FloatingTimer />
+        <BottomTabBar activeTab={currentTab} setActiveTab={setCurrentTab} />
     </>
   );
 }
@@ -1770,7 +2302,7 @@ function DraftsView({
   // Regenerate all three drafts from scratch using the original inputs.
   // Clears any edits, resets selection to the first draft.
   const handleRefreshAll = async () => {
-    if (editedText !== null && !confirm('Refreshing will replace all three drafts and clear your edits. Continue?')) return;
+
     setRefreshing('all');
     try {
       const variants = await generateLetters({ letterType, name, situation, topic, tone, length });
@@ -1787,7 +2319,7 @@ function DraftsView({
   // Regenerate only the currently selected draft, keeping the other two.
   // Clears the edit on this one specifically.
   const handleRefreshOne = async () => {
-    if (editedText !== null && !confirm('Refreshing this draft will clear your edits. Continue?')) return;
+
     setRefreshing(selectedIndex);
     try {
       const variants = await generateLetters({ letterType, name, situation, topic, tone, length });
@@ -1887,7 +2419,7 @@ function DraftsView({
 
   // Switching drafts resets any edits the user made on the previous one.
   const handleSelectDraft = (i) => {
-    if (editedText !== null && !confirm('Switching drafts will clear your edits. Continue?')) return;
+
     setSelectedIndex(i);
     setEditedText(null);
   };
