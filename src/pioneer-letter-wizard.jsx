@@ -635,6 +635,283 @@ function InstallPrompt() {
 }
 
 // ============================================================================
+// SPLASH SCREEN — shows on every app launch. Animated fountain pen traverses
+// the screen while the PioneerPen wordmark fades in letter-by-letter.
+// User taps "Begin" (or "Skip" in the corner) to enter the app.
+// ============================================================================
+
+function SplashScreen({ onContinue }) {
+  // Phase tracking for the animation sequence.
+  // 0 = initial, 1 = pen animating + letters appearing, 2 = complete (button shown)
+  const [phase, setPhase] = useState(0);
+  const [leaving, setLeaving] = useState(false);
+
+  const WORDMARK = 'PioneerPen';
+  const ANIMATION_TOTAL_MS = 2800; // roughly how long the writing takes
+
+  useEffect(() => {
+    // Start the pen/letter animation shortly after mount
+    const t1 = setTimeout(() => setPhase(1), 300);
+    // After animation finishes, reveal the Begin button
+    const t2 = setTimeout(() => setPhase(2), 300 + ANIMATION_TOTAL_MS);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  const handleDismiss = () => {
+    if (leaving) return;
+    setLeaving(true);
+    // Give the fade-out animation time before swapping to wizard
+    setTimeout(() => onContinue(), 420);
+  };
+
+  // Per-letter delay: spread across the animation duration
+  const letterDelay = (i) => 400 + i * (ANIMATION_TOTAL_MS / WORDMARK.length) * 0.9;
+
+  return (
+    <>
+      <style>{`
+        @keyframes pioneer-splash-penglide {
+          0%   { transform: translate(-80px, -20px) rotate(-28deg); opacity: 0; }
+          12%  { opacity: 1; }
+          92%  { opacity: 1; }
+          100% { transform: translate(280px, -20px) rotate(-28deg); opacity: 0; }
+        }
+        @keyframes pioneer-splash-letter {
+          0%   { opacity: 0; transform: translateY(6px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pioneer-splash-fade-in {
+          0%   { opacity: 0; }
+          100% { opacity: 1; }
+        }
+        @keyframes pioneer-splash-ink-appear {
+          0%   { opacity: 0; transform: scale(0.4); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        .pioneer-splash-root {
+          transition: opacity 0.42s ease-out;
+        }
+        .pioneer-splash-root.leaving {
+          opacity: 0;
+          pointer-events: none;
+        }
+      `}</style>
+
+      <div
+        className={`pioneer-splash-root${leaving ? ' leaving' : ''}`}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: PARCHMENT,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          overflow: 'hidden',
+          padding: 'env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)'
+        }}
+      >
+        {/* Skip link, top-right */}
+        <button
+          onClick={handleDismiss}
+          style={{
+            position: 'absolute',
+            top: 'calc(env(safe-area-inset-top) + 20px)',
+            right: 'calc(env(safe-area-inset-right) + 20px)',
+            background: 'none',
+            border: 'none',
+            color: MUTED,
+            fontSize: '13px',
+            letterSpacing: '0.14em',
+            cursor: 'pointer',
+            padding: '10px 14px',
+            opacity: 0.7,
+            fontFamily: 'inherit'
+          }}
+        >
+          Skip →
+        </button>
+
+        {/* Faint inner frame, matches Instagram images */}
+        <div style={{
+          position: 'absolute',
+          top: '56px',
+          right: '56px',
+          bottom: '56px',
+          left: '56px',
+          border: `1px solid rgba(28,27,23,0.15)`,
+          pointerEvents: 'none'
+        }} />
+
+        {/* Animation stage */}
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          maxWidth: '480px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '26px'
+        }}>
+          {/* Pen + wordmark group — positioned relative so pen animation can pass over letters */}
+          <div style={{
+            position: 'relative',
+            height: '140px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%'
+          }}>
+            {/* Fountain pen SVG — slides in from upper-left and glides across */}
+            {phase >= 1 && (
+              <svg
+                width="70"
+                height="170"
+                viewBox="0 0 70 170"
+                style={{
+                  position: 'absolute',
+                  top: '-40px',
+                  left: '50%',
+                  marginLeft: '-140px',
+                  animation: `pioneer-splash-penglide ${ANIMATION_TOTAL_MS}ms cubic-bezier(0.4, 0, 0.2, 1) forwards`
+                }}
+                aria-hidden="true"
+              >
+                {/* Pen barrel — dark ink color */}
+                <rect x="28" y="20" width="14" height="90" rx="3" fill="#1C1B17"/>
+                {/* Cap band — small sage accent */}
+                <rect x="28" y="50" width="14" height="3" fill="#6B8564"/>
+                {/* Grip (lighter section near nib) */}
+                <rect x="29" y="108" width="12" height="20" rx="2" fill="#3A3732"/>
+                {/* Nib — parchment-colored triangle */}
+                <path d="M 35 128 L 26 162 L 30 164 L 35 168 L 40 164 L 44 162 Z" fill="#1C1B17"/>
+                {/* Nib slit */}
+                <line x1="35" y1="140" x2="35" y2="162" stroke="#F8F2E6" strokeWidth="1.2"/>
+                {/* Breather hole */}
+                <circle cx="35" cy="144" r="1.8" fill="#F8F2E6"/>
+                {/* Clip on barrel */}
+                <rect x="41" y="22" width="2" height="26" fill="#F8F2E6" opacity="0.7"/>
+              </svg>
+            )}
+
+            {/* Wordmark — letters appear one at a time, in classical serif */}
+            <div style={{
+              fontFamily: '"Playfair Display", "EB Garamond", Garamond, Georgia, serif',
+              fontSize: 'clamp(48px, 11vw, 76px)',
+              fontWeight: 500,
+              fontStyle: 'italic',
+              color: INK,
+              letterSpacing: '0.005em',
+              display: 'flex',
+              position: 'relative',
+              zIndex: 1,
+              lineHeight: 1,
+              justifyContent: 'center',
+              flexWrap: 'nowrap',
+              whiteSpace: 'nowrap'
+            }}>
+              {WORDMARK.split('').map((char, i) => (
+                <span
+                  key={i}
+                  style={{
+                    opacity: 0,
+                    display: 'inline-block',
+                    // Spaces render as empty with inline-block — use a fixed width
+                    // so the word spacing looks right and the space still fades in with the animation.
+                    width: char === ' ' ? '0.3em' : 'auto',
+                    animation: phase >= 1
+                      ? `pioneer-splash-letter 0.35s ease-out ${letterDelay(i)}ms forwards`
+                      : 'none'
+                  }}
+                >
+                  {char === ' ' ? '\u00A0' : char}
+                </span>
+              ))}
+            </div>
+
+            {/* Sage ink drop — appears once writing is complete */}
+            <div style={{
+              position: 'absolute',
+              bottom: '-4px',
+              left: '50%',
+              width: '10px',
+              height: '10px',
+              marginLeft: '-5px',
+              borderRadius: '50%',
+              background: SAGE,
+              opacity: 0,
+              animation: phase >= 2
+                ? `pioneer-splash-ink-appear 0.5s ease-out forwards`
+                : 'none'
+            }} />
+          </div>
+
+          {/* Tagline — fades in with the button */}
+          <div style={{
+            fontFamily: '"Playfair Display", "EB Garamond", Garamond, Georgia, serif',
+            fontSize: '18px',
+            fontStyle: 'italic',
+            fontWeight: 400,
+            color: MUTED,
+            textAlign: 'center',
+            letterSpacing: '0.01em',
+            opacity: 0,
+            animation: phase >= 2
+              ? 'pioneer-splash-fade-in 0.6s ease-out 0.2s forwards'
+              : 'none'
+          }}>
+            A quieter way to begin.
+          </div>
+
+          {/* Begin button — fades in after animation completes */}
+          <button
+            onClick={handleDismiss}
+            style={{
+              marginTop: '18px',
+              padding: '15px 44px',
+              background: INK,
+              color: PARCHMENT,
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '15px',
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              fontWeight: 500,
+              opacity: 0,
+              animation: phase >= 2
+                ? 'pioneer-splash-fade-in 0.6s ease-out 0.5s forwards'
+                : 'none'
+            }}
+          >
+            Begin
+          </button>
+        </div>
+
+        {/* Footer attribution — fades in with button */}
+        <div style={{
+          position: 'absolute',
+          bottom: 'calc(env(safe-area-inset-bottom) + 32px)',
+          left: 0,
+          right: 0,
+          textAlign: 'center',
+          fontSize: '11px',
+          letterSpacing: '0.28em',
+          color: MUTED,
+          opacity: 0,
+          animation: phase >= 2
+            ? 'pioneer-splash-fade-in 0.6s ease-out 0.7s forwards'
+            : 'none'
+        }}>
+          BY EJ ROSA
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ============================================================================
 // APP FOOTER — copyright line, privacy note, and About modal trigger.
 // Appears at the bottom of every screen with minimal visual weight so it
 // doesn't compete with the app's main content.
@@ -920,6 +1197,10 @@ export default function PioneerLetterWizard() {
   const [drafts, setDrafts] = useState(null);
   const [error, setError] = useState(null);
 
+  // Splash screen — shown on every app launch until user taps Begin or Skip.
+  // Defaults to true so every launch starts with the splash animation.
+  const [showSplash, setShowSplash] = useState(true);
+
   const TOTAL_STEPS = 5;
 
   // Recommended tone for each letter type — applied when the user picks a type,
@@ -984,6 +1265,17 @@ export default function PioneerLetterWizard() {
     }
     return true;
   };
+
+  // ---------- SPLASH SCREEN ----------
+  // Shows on every launch. Taps "Begin" (or "Skip") to enter the wizard.
+  if (showSplash) {
+    return (
+      <>
+        <FontLink />
+        <SplashScreen onContinue={() => setShowSplash(false)} />
+      </>
+    );
+  }
 
   // ---------- LOADING SCREEN ----------
   if (loading) {
@@ -1517,7 +1809,7 @@ function DraftsView({
           type="text"
           value={editorRecipientName}
           onChange={(e) => setEditorRecipientName(e.target.value)}
-          placeholder="e.g. Sarah — leave blank for a general greeting"
+          placeholder="e.g. Rosa — leave blank for a general greeting"
           style={{ ...styles.smallInput, marginBottom: '16px' }}
         />
 
@@ -1546,7 +1838,7 @@ function DraftsView({
             <textarea
               value={recipientAddress}
               onChange={(e) => setRecipientAddress(e.target.value)}
-              placeholder={'Sarah Chen\n42 Oak Street\nSummerville, SC 29483'}
+              placeholder={'Rosa Santos\n42 Oak Street\nSummerville, SC 29483'}
               style={{ ...styles.textInput, minHeight: '70px', marginBottom: '12px' }}
             />
             <div style={{ fontSize: '13px', color: MUTED, marginBottom: '6px' }}>
@@ -2011,7 +2303,7 @@ function StepRecipient({ name, setName }) {
         type="text"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="e.g. Sarah"
+        placeholder="e.g. Rosa"
       />
     </>
   );
@@ -2022,6 +2314,18 @@ function StepSituation({ letterType, situation, setSituation, topic, setTopic })
   const recognitionRef = useRef(null);
   const [isListening, setIsListening] = useState(false);
   const [voiceError, setVoiceError] = useState(null);
+
+  // Current news topics — fetched once on mount, shown as read-only inspiration.
+  // If the fetch fails for any reason the section simply doesn't render.
+  const [newsTopics, setNewsTopics] = useState(null); // null = loading, [] = failed, [...] = loaded
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/current-topics')
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data) => { if (!cancelled) setNewsTopics(data.topics || []); })
+      .catch(() => { if (!cancelled) setNewsTopics([]); });
+    return () => { cancelled = true; };
+  }, []);
 
   // The heading and placeholder shift based on letter type,
   // because a memorial invitation asks a different question than a comfort letter.
@@ -2159,6 +2463,89 @@ function StepSituation({ letterType, situation, setSituation, topic, setTopic })
         </>
       )}
 
+      {/* ----------------------------------------------------------------
+          IN THE NEWS — current global news themes as letter-writing
+          inspiration. Fetched from /api/current-topics (cached 24h).
+          Read-only; user types their own situation based on what resonates.
+          Shown only when topics loaded successfully (at least 1 topic).
+          ---------------------------------------------------------------- */}
+      {newsTopics && newsTopics.length > 0 && (
+        <div style={{ marginTop: '24px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            marginBottom: '10px'
+          }}>
+            <span style={{ fontSize: '14px' }}>🌐</span>
+            <span style={{
+              fontSize: '12px',
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              color: MUTED,
+              textTransform: 'uppercase'
+            }}>
+              In the news
+            </span>
+            <span style={{
+              fontSize: '11px',
+              color: MUTED,
+              opacity: 0.7,
+              marginLeft: '4px'
+            }}>
+              — for inspiration
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {newsTopics.map((item, i) => (
+              <div
+                key={i}
+                style={{
+                  background: CARD,
+                  border: `1px solid ${BORDER}`,
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  gap: '10px',
+                  alignItems: 'flex-start'
+                }}
+              >
+                <span style={{ fontSize: '20px', lineHeight: 1.2, flexShrink: 0 }}>
+                  {item.emoji}
+                </span>
+                <div>
+                  <div style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: INK,
+                    lineHeight: 1.3,
+                    marginBottom: '3px'
+                  }}>
+                    {item.title}
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: MUTED,
+                    lineHeight: 1.45
+                  }}>
+                    {item.description}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{
+            fontSize: '11px',
+            color: MUTED,
+            opacity: 0.65,
+            marginTop: '8px',
+            textAlign: 'right'
+          }}>
+            Updated daily
+          </div>
+        </div>
+      )}
+
       <div style={{ ...styles.exampleLabel, marginTop: '28px' }}>
         Weave in a topic (optional):
       </div>
@@ -2268,7 +2655,8 @@ function StepLength({ length, setLength }) {
 // ============================================================================
 
 function FontLink() {
-  // Injects the Fraunces font once. Fallbacks handle cases where it can't load.
+  // Injects the Fraunces font (main UI) and Playfair Display (splash wordmark) once.
+  // Fallbacks handle cases where they can't load.
   // Also injects a small responsive stylesheet so the app feels phone-native
   // (edge-to-edge, fills screen) on mobile, while still looking like a centered
   // card on tablets and desktops.
@@ -2277,7 +2665,7 @@ function FontLink() {
       const link = document.createElement('link');
       link.id = 'pioneer-font';
       link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap';
+      link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap';
       document.head.appendChild(link);
     }
     if (!document.getElementById('pioneer-responsive')) {
