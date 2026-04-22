@@ -228,6 +228,18 @@ const ROSE = '#B86B5E';
 // or set to null to hide the Support link everywhere.
 const PAYPAL_URL = 'https://paypal.me/ejrosa';
 
+// Formspree form IDs — create free forms at formspree.io (2 minutes to set up).
+// Steps: go to formspree.io → New Form → copy the ID from the URL or embed code.
+// The ID looks like: xdknpwqv (short alphanumeric string).
+// Replace the placeholders below with your real IDs, then push to GitHub.
+const FORMSPREE_TICKETS_ID = 'YOUR_TICKETS_FORM_ID';     // <-- replace this
+const FORMSPREE_SUGGESTIONS_ID = 'YOUR_SUGGESTIONS_FORM_ID'; // <-- replace this
+
+// Height of the fixed bottom tab bar in pixels.
+// All scrollable content areas need bottom padding equal to this so nothing
+// hides under the tab bar on any screen.
+const TAB_BAR_H = 62;
+
 const styles = {
   outer: {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif',
@@ -912,6 +924,333 @@ function SplashScreen({ onContinue }) {
 }
 
 // ============================================================================
+// BOTTOM TAB BAR — fixed to the bottom of every screen after the splash.
+// Three tabs: Home (wizard), Tickets (bug reports), Suggestions (feature ideas).
+// ============================================================================
+
+function BottomTabBar({ activeTab, setActiveTab }) {
+  // Each tab has its own accent color so they're visually distinct.
+  // Active state brightens the icon and label; inactive is a muted version.
+  const tabs = [
+    {
+      id: 'home',
+      label: 'Write',
+      activeColor: '#4A90D9',   // sky blue
+      icon: (active) => (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          {/* Barrel */}
+          <rect x="10.5" y="2" width="5" height="11" rx="2.5"
+            fill={active ? '#4A90D9' : '#B0C4DE'}/>
+          {/* Cap band */}
+          <rect x="10.5" y="7" width="5" height="2"
+            fill={active ? '#2E6DB4' : '#8FA8C8'}/>
+          {/* Clip */}
+          <rect x="15" y="2.5" width="1.2" height="7" rx="0.6"
+            fill={active ? '#2E6DB4' : '#8FA8C8'} opacity="0.8"/>
+          {/* Grip section */}
+          <path d="M11 13h4l.5 2h-5z"
+            fill={active ? '#2E6DB4' : '#8FA8C8'}/>
+          {/* Nib */}
+          <path d="M11.5 15L12 22l.5-1 .5 1 .5-7z"
+            fill={active ? '#1C1B17' : '#7A8FA8'}/>
+          {/* Nib slit */}
+          <line x1="12.5" y1="16.5" x2="12.5" y2="20.5"
+            stroke={active ? '#ffffff' : '#E8F0F8'}
+            strokeWidth="0.8" strokeLinecap="round"/>
+          {/* Ink drop */}
+          <circle cx="12.5" cy="22" r="1.2"
+            fill={active ? '#4A90D9' : '#B0C4DE'} opacity="0.85"/>
+          {/* Shine on barrel */}
+          <rect x="11.5" y="3" width="1" height="5" rx="0.5"
+            fill="white" opacity={active ? 0.35 : 0.2}/>
+        </svg>
+      )
+    },
+    {
+      id: 'ticket',
+      label: 'Tickets',
+      activeColor: '#E05C5C',   // coral red
+      icon: (active) => (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          {/* Ticket background */}
+          <path d="M2 8a2 2 0 012-2h16a2 2 0 012 2v1.5a2.5 2.5 0 000 5V16a2 2 0 01-2 2H4a2 2 0 01-2-2v-1.5a2.5 2.5 0 000-5V8z"
+            fill={active ? '#E05C5C' : '#F0B8B8'}/>
+          {/* Dashed divider */}
+          <line x1="9" y1="8" x2="9" y2="16"
+            stroke={active ? '#ffffff' : '#F8E0E0'}
+            strokeWidth="1.2" strokeDasharray="1.5 1.5"/>
+          {/* Ticket text lines */}
+          <rect x="11" y="10" width="7" height="1.5" rx="0.75"
+            fill={active ? '#ffffff' : '#F8E0E0'} opacity="0.9"/>
+          <rect x="11" y="13" width="5" height="1.5" rx="0.75"
+            fill={active ? '#ffffff' : '#F8E0E0'} opacity="0.7"/>
+          {/* Alert dot */}
+          <circle cx="5.5" cy="12" r="1.5"
+            fill={active ? '#ffffff' : '#F8E0E0'}/>
+        </svg>
+      )
+    },
+    {
+      id: 'suggest',
+      label: 'Ideas',
+      activeColor: '#F5A623',   // warm amber/gold
+      icon: (active) => (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          {/* Bulb glass */}
+          <path d="M12 2a7 7 0 015.196 11.732c-.71.8-1.196 1.8-1.196 2.768v.5H8v-.5c0-.968-.486-1.968-1.196-2.768A7 7 0 0112 2z"
+            fill={active ? '#F5A623' : '#F5D78E'}/>
+          {/* Glow effect when active */}
+          {active && (
+            <path d="M12 2a7 7 0 015.196 11.732c-.71.8-1.196 1.8-1.196 2.768v.5H8v-.5c0-.968-.486-1.968-1.196-2.768A7 7 0 0112 2z"
+              fill="#FFF0B0" opacity="0.4"/>
+          )}
+          {/* Base of bulb */}
+          <rect x="9" y="17" width="6" height="1.5" rx="0.75"
+            fill={active ? '#D4891A' : '#C8A855'}/>
+          <rect x="9.5" y="19" width="5" height="1.5" rx="0.75"
+            fill={active ? '#D4891A' : '#C8A855'}/>
+          {/* Filament */}
+          <path d="M10 11 Q12 9 14 11" stroke={active ? '#ffffff' : '#FFF8E0'}
+            strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+          {/* Shine lines */}
+          <line x1="12" y1="4" x2="12" y2="5.5"
+            stroke={active ? '#ffffff' : '#FFF8E0'}
+            strokeWidth="1" strokeLinecap="round" opacity="0.7"/>
+          <line x1="15.5" y1="5.5" x2="14.5" y2="6.5"
+            stroke={active ? '#ffffff' : '#FFF8E0'}
+            strokeWidth="1" strokeLinecap="round" opacity="0.7"/>
+        </svg>
+      )
+    }
+  ];
+
+  return (
+    <div
+      className="no-print"
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: `calc(${TAB_BAR_H}px + env(safe-area-inset-bottom))`,
+        background: CARD,
+        borderTop: `1px solid ${BORDER}`,
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-around',
+        paddingTop: '6px',
+        zIndex: 100,
+        boxShadow: '0 -2px 16px rgba(0,0,0,0.08)'
+      }}
+    >
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '3px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px 20px',
+              fontFamily: 'inherit',
+              fontSize: '10px',
+              letterSpacing: '0.06em',
+              fontWeight: isActive ? 700 : 400,
+              color: isActive ? tab.activeColor : MUTED,
+              transition: 'color 0.15s',
+              // Subtle active pill background
+              borderRadius: '12px',
+              backgroundColor: isActive ? `${tab.activeColor}18` : 'transparent'
+            }}
+          >
+            {tab.icon(isActive)}
+            {tab.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================================================
+// FEEDBACK FORM — shared layout used by both TicketView and SuggestView.
+// On submit, opens the user's native email app with all fields pre-filled.
+// The user taps "Send" in their email app to complete the submission.
+// ============================================================================
+
+function FeedbackForm({ type }) {
+  const isTicket = type === 'ticket';
+
+  const config = {
+    ticket: {
+      heading: 'Report an issue',
+      subheading: 'Something not working right? Tell me what happened and I\'ll look into it.',
+      placeholder: 'Describe what you were doing and what went wrong…',
+      label: 'What\'s the issue?',
+      buttonLabel: 'Send ticket',
+      subject: 'PioneerPen Ticket',
+      emoji: '🎫'
+    },
+    suggest: {
+      heading: 'Suggest a feature',
+      subheading: 'Have an idea that would make PioneerPen more useful? I\'d love to hear it.',
+      placeholder: 'Describe the feature or improvement you\'d like to see…',
+      label: 'Your suggestion',
+      buttonLabel: 'Send suggestion',
+      subject: 'PioneerPen Suggestion',
+      emoji: '💡'
+    }
+  }[type];
+
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = () => {
+    // Validate all fields
+    if (!name.trim() || !email.trim() || !message.trim()) {
+      setError('Please fill in all fields before sending.');
+      return;
+    }
+    if (!email.includes('@')) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    setError('');
+
+    // Build the pre-filled email
+    const subject = encodeURIComponent(`${config.subject} — ${name.trim()}`);
+    const body = encodeURIComponent(
+      `Name: ${name.trim()}\nEmail: ${email.trim()}\n\n${isTicket ? 'Issue' : 'Suggestion'}:\n${message.trim()}\n\n---\nSent from PioneerPen`
+    );
+
+    // Open native email app
+    window.location.href = `mailto:eunice@ejrosa.com?subject=${subject}&body=${body}`;
+
+    // Show confirmation after a short delay
+    setTimeout(() => setSubmitted(true), 400);
+  };
+
+  if (submitted) {
+    return (
+      <div className="pioneer-outer" style={{ ...styles.outer, paddingBottom: `${TAB_BAR_H + 20}px` }}>
+        <FontLink />
+        <div className="pioneer-card" style={styles.phone}>
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            gap: '16px',
+            padding: '20px'
+          }}>
+            <div style={{ fontSize: '48px' }}>{config.emoji}</div>
+            <h2 style={{ ...styles.heading, marginBottom: 0 }}>
+              {isTicket ? 'Ticket ready to send' : 'Suggestion ready to send'}
+            </h2>
+            <p style={{ fontSize: '15px', color: MUTED, lineHeight: 1.6, maxWidth: '280px' }}>
+              Your email app should have opened with your {isTicket ? 'ticket' : 'suggestion'} pre-filled.
+              Tap <strong>Send</strong> there to submit it.
+            </p>
+            <p style={{ fontSize: '13px', color: MUTED, lineHeight: 1.5, maxWidth: '280px', opacity: 0.8 }}>
+              If your email app didn't open, email{' '}
+              <a href="mailto:eunice@ejrosa.com" style={{ color: SAGE }}>eunice@ejrosa.com</a>
+              {' '}directly with your {isTicket ? 'issue' : 'suggestion'}.
+            </p>
+            <button
+              onClick={() => { setSubmitted(false); setName(''); setEmail(''); setMessage(''); }}
+              style={{ ...styles.backBtn, marginTop: '8px', flex: 'none', padding: '12px 24px' }}
+            >
+              Submit another
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pioneer-outer" style={{ ...styles.outer, paddingBottom: `${TAB_BAR_H + 20}px` }}>
+      <FontLink />
+      <div className="pioneer-card" style={styles.phone}>
+        <h1 style={styles.heading}>{config.heading}</h1>
+        <p style={{ fontSize: '14px', color: MUTED, lineHeight: 1.5, marginBottom: '24px', marginTop: '-8px' }}>
+          {config.subheading}
+        </p>
+
+        {error && (
+          <div style={styles.errorBox}>{error}</div>
+        )}
+
+        {/* Name */}
+        <div style={{ marginBottom: '14px' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: INK, marginBottom: '6px', letterSpacing: '0.02em' }}>
+            Your name
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Rosa Santos"
+            style={styles.smallInput}
+          />
+        </div>
+
+        {/* Email */}
+        <div style={{ marginBottom: '14px' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: INK, marginBottom: '6px', letterSpacing: '0.02em' }}>
+            Your email
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="so I can follow up with you"
+            style={styles.smallInput}
+          />
+        </div>
+
+        {/* Message */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: INK, marginBottom: '6px', letterSpacing: '0.02em' }}>
+            {config.label}
+          </label>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder={config.placeholder}
+            style={{ ...styles.textInput, minHeight: '120px' }}
+          />
+        </div>
+
+        {/* Submit */}
+        <button
+          onClick={handleSubmit}
+          style={{ ...styles.primaryBtn, flex: 'none', width: '100%' }}
+        >
+          {config.buttonLabel}
+        </button>
+
+        <p style={{ fontSize: '11px', color: MUTED, textAlign: 'center', marginTop: '12px', lineHeight: 1.5, opacity: 0.8 }}>
+          Tapping send will open your email app with your message pre-filled.
+          You'll just need to tap Send there to submit.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // APP FOOTER — copyright line, privacy note, and About modal trigger.
 // Appears at the bottom of every screen with minimal visual weight so it
 // doesn't compete with the app's main content.
@@ -1201,6 +1540,10 @@ export default function PioneerLetterWizard() {
   // Defaults to true so every launch starts with the splash animation.
   const [showSplash, setShowSplash] = useState(true);
 
+  // Bottom tab bar — controls which screen is shown after the splash.
+  // 'home' = the letter wizard, 'ticket' = bug report, 'suggest' = feature idea.
+  const [currentTab, setCurrentTab] = useState('home');
+
   const TOTAL_STEPS = 5;
 
   // Recommended tone for each letter type — applied when the user picks a type,
@@ -1277,48 +1620,75 @@ export default function PioneerLetterWizard() {
     );
   }
 
+  // ---------- TICKET / SUGGEST TABS ----------
+  if (currentTab === 'ticket') {
+    return (
+      <>
+        <FeedbackForm type="ticket" />
+        <BottomTabBar activeTab={currentTab} setActiveTab={setCurrentTab} />
+      </>
+    );
+  }
+
+  if (currentTab === 'suggest') {
+    return (
+      <>
+        <FeedbackForm type="suggest" />
+        <BottomTabBar activeTab={currentTab} setActiveTab={setCurrentTab} />
+      </>
+    );
+  }
+
   // ---------- LOADING SCREEN ----------
   if (loading) {
     return (
-      <div className="pioneer-outer" style={styles.outer}>
-        <FontLink />
-        <InstallPrompt />
-        <div className="pioneer-card" style={styles.phone}>
-          <div style={styles.loadingWrap}>
-            <Spinner />
-            <div style={{ fontSize: '16px' }}>Writing three drafts…</div>
-            <div style={{ fontSize: '13px', maxWidth: '260px', textAlign: 'center' }}>
-              The assistant is thinking about what to say. This usually takes 5–15 seconds.
+      <>
+        <div className="pioneer-outer" style={{ ...styles.outer, paddingBottom: `${TAB_BAR_H + 20}px` }}>
+          <FontLink />
+          <InstallPrompt />
+          <div className="pioneer-card" style={styles.phone}>
+            <div style={styles.loadingWrap}>
+              <Spinner />
+              <div style={{ fontSize: '16px' }}>Writing three drafts…</div>
+              <div style={{ fontSize: '13px', maxWidth: '260px', textAlign: 'center' }}>
+                The assistant is thinking about what to say. This usually takes 5–15 seconds.
+              </div>
             </div>
           </div>
         </div>
-      </div>
+        <BottomTabBar activeTab={currentTab} setActiveTab={setCurrentTab} />
+      </>
     );
   }
 
   // ---------- RESULTS SCREEN ----------
   if (drafts) {
-    return <DraftsView
-      drafts={drafts}
-      setDrafts={setDrafts}
-      recipientName={name}
-      // The original inputs — needed to regenerate with the same context.
-      letterType={letterType}
-      name={name}
-      situation={situation}
-      topic={topic}
-      tone={tone}
-      length={length}
-      onStartOver={handleStartOver}
-    />;
+    return (
+      <>
+        <DraftsView
+          drafts={drafts}
+          setDrafts={setDrafts}
+          recipientName={name}
+          letterType={letterType}
+          name={name}
+          situation={situation}
+          topic={topic}
+          tone={tone}
+          length={length}
+          onStartOver={handleStartOver}
+        />
+        <BottomTabBar activeTab={currentTab} setActiveTab={setCurrentTab} />
+      </>
+    );
   }
 
   // ---------- WIZARD SCREENS ----------
   return (
-    <div className="pioneer-outer" style={styles.outer}>
-      <FontLink />
-      <InstallPrompt />
-      <div className="pioneer-card" style={styles.phone}>
+    <>
+      <div className="pioneer-outer" style={{ ...styles.outer, paddingBottom: `${TAB_BAR_H + 20}px` }}>
+        <FontLink />
+        <InstallPrompt />
+        <div className="pioneer-card" style={styles.phone}>
         <div style={styles.stepLabel}>Step {step + 1} of {TOTAL_STEPS}</div>
         <div style={styles.progressTrack}>
           <div style={{ ...styles.progressFill, width: `${((step + 1) / TOTAL_STEPS) * 100}%` }} />
@@ -1365,6 +1735,8 @@ export default function PioneerLetterWizard() {
         <AppFooter />
       </div>
     </div>
+      <BottomTabBar activeTab={currentTab} setActiveTab={setCurrentTab} />
+    </>
   );
 }
 
@@ -1677,7 +2049,7 @@ function DraftsView({
   };
 
   return (
-    <div className="pioneer-outer" style={styles.outer}>
+    <div className="pioneer-outer" style={{ ...styles.outer, paddingBottom: `${TAB_BAR_H + 20}px` }}>
       <FontLink />
       <PrintStyles />
       <InstallPrompt />
@@ -2467,8 +2839,16 @@ function StepSituation({ letterType, situation, setSituation, topic, setTopic })
           IN THE NEWS — current global news themes as letter-writing
           inspiration. Fetched from /api/current-topics (cached 24h).
           Read-only; user types their own situation based on what resonates.
-          Shown only when topics loaded successfully (at least 1 topic).
+          Shows a subtle loading state while fetching, disappears on failure.
           ---------------------------------------------------------------- */}
+      {newsTopics === null && (
+        <div style={{ marginTop: '24px', display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.5 }}>
+          <span style={{ fontSize: '14px' }}>🌐</span>
+          <span style={{ fontSize: '12px', color: MUTED, letterSpacing: '0.04em' }}>
+            Loading current topics…
+          </span>
+        </div>
+      )}
       {newsTopics && newsTopics.length > 0 && (
         <div style={{ marginTop: '24px' }}>
           <div style={{
