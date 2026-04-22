@@ -1,44 +1,10 @@
 // api/current-topics.js
 //
-// Returns 5 current global news themes relevant to ministry letter-writing.
-// Claude uses web search to find real-world human situations (grief, hardship,
-// anxiety, health, economic stress, etc.) that might inspire a thoughtful letter.
-//
-// The response is cached at Vercel's CDN edge for 24 hours, so the search
-// runs at most once per day regardless of how many users visit. This keeps
-// API costs minimal while keeping topics fresh.
-
-const TOPICS_SYSTEM_PROMPT = `You are helping a letter-writing app suggest timely, relevant topics.
-
-Search current global news to find 5 human-interest situations that might inspire someone to write a thoughtful personal letter to a neighbor or acquaintance. Focus on:
-- Grief and loss (bereavement, tragedy, disaster)
-- Health challenges (illness, mental health struggles, recovery)
-- Economic hardship (job loss, financial stress, housing)
-- Natural disasters or severe weather affecting communities
-- Loneliness and isolation (elderly, displaced families, social disconnection)
-- Family stress (caregiving, relationship strain, parenting challenges)
-- Anxiety and uncertainty about the future
-
-Do NOT include:
-- Political events or controversies
-- Celebrity news
-- Sports results
-- Religious or denominational news
-- Anything sensational, violent, or disturbing
-
-Return ONLY a valid JSON object. No preamble, no markdown, no explanation. Exactly this shape:
-{
-  "topics": [
-    {
-      "emoji": "single emoji that fits the theme",
-      "title": "5 to 8 word theme title",
-      "description": "One sentence about what is happening and why someone might want to reach out."
-    }
-  ],
-  "date": "today's date in YYYY-MM-DD format"
-}
-
-Return exactly 5 topics. Keep titles concise and descriptions warm, not clinical.`;
+// Returns 5 human-interest topic themes relevant to ministry letter-writing.
+// Uses Claude directly (no web search tool) for maximum reliability.
+// Topics rotate based on the current month so they feel fresh without
+// requiring a live web search on every request.
+// Response is cached at Vercel's CDN edge for 24 hours.
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -46,6 +12,11 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Include the current month so topics feel seasonally relevant
+    const now = new Date();
+    const month = now.toLocaleString('en-US', { month: 'long' });
+    const year = now.getFullYear();
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -55,13 +26,36 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: 1500,
-        system: TOPICS_SYSTEM_PROMPT,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        max_tokens: 800,
         messages: [
           {
             role: 'user',
-            content: `Search the web for current global news stories about human situations — grief, hardship, health challenges, economic stress, natural disasters, loneliness — and return exactly 5 topics relevant to writing a thoughtful personal letter. Return only the JSON object as instructed.`
+            content: `You are helping a ministry letter-writing app suggest timely topic themes for ${month} ${year}.
+
+Generate 5 human-interest themes that are commonly happening in people's lives right now — situations where receiving a thoughtful personal letter would mean a lot. Think about what real people in your neighborhood might be going through.
+
+Focus on universal human situations like:
+- Grief and loss
+- Health challenges or recovery
+- Economic hardship or job stress
+- Loneliness or isolation
+- Family difficulties
+- Anxiety about the future
+- Natural disasters or community hardship
+- Seasonal challenges (${month}-specific if relevant)
+
+Return ONLY a valid JSON object — no preamble, no markdown fences, no explanation:
+{
+  "topics": [
+    {
+      "emoji": "single relevant emoji",
+      "title": "Short 5-7 word theme title",
+      "description": "One warm sentence about this situation and why someone might want to reach out."
+    }
+  ]
+}
+
+Return exactly 5 topics. Make them feel real and current, not generic.`
           }
         ]
       })
@@ -75,9 +69,6 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    // Claude may return multiple content blocks when using web search —
-    // tool_use (search queries), tool_result (search results), and finally
-    // a text block with the actual JSON answer. We want the last text block.
     const textBlocks = (data.content || [])
       .filter((b) => b.type === 'text')
       .map((b) => b.text);
@@ -88,7 +79,7 @@ export default async function handler(req, res) {
 
     const rawText = textBlocks[textBlocks.length - 1];
 
-    // Strip any accidental markdown fences before parsing
+    // Strip any accidental markdown fences
     const clean = rawText
       .replace(/^```json\s*/i, '')
       .replace(/^```\s*/i, '')
@@ -101,18 +92,12 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Unexpected response shape.' });
     }
 
-    // Cache at Vercel's CDN for 24 hours.
-    // s-maxage = CDN cache duration (24h)
-    // stale-while-revalidate = serve stale while fetching fresh (1h)
-    // This means the search runs at most once per day globally.
-    res.setHeader(
-      'Cache-Control',
-      's-maxage=86400, stale-while-revalidate=3600'
-    );
+    // Cache for 24 hours at Vercel's CDN
+    res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=3600');
 
     return res.status(200).json({
       topics: parsed.topics.slice(0, 5),
-      date: parsed.date || new Date().toISOString().split('T')[0]
+      date: now.toISOString().split('T')[0]
     });
 
   } catch (err) {
