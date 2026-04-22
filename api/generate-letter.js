@@ -5,7 +5,37 @@
 // This file lives at the project root in the /api folder — Vercel
 // auto-discovers it and serves it at /api/generate-letter.
 
-const SYSTEM_PROMPT = `You are a writing assistant that helps a publisher draft a personal letter to someone in their neighborhood. You are a drafting tool, not the author — the publisher will edit and personalize every letter before sending.
+// ============================================================================
+// LANGUAGE CONFIG
+// To add a new language:
+//   1. Add an entry to LANGUAGES with the language ID as the key
+//   2. `name` is the human-readable name sent in the user message
+//   3. `instructions` is appended to the system prompt — tell the model
+//      any language-specific rules (formality, script usage, register, etc.)
+// ============================================================================
+
+const LANGUAGES = {
+  en: {
+    name: 'English',
+    instructions: 'Write the letter in natural, conversational English.'
+  },
+  tl: {
+    name: 'Tagalog',
+    instructions:
+      'Write the letter in natural, fluent Tagalog — not English translated word-for-word. ' +
+      'Use appropriate formality: consistent po/opo throughout, since the recipient is ' +
+      'typically a stranger or elder. Avoid Taglish (do not code-switch into English) — keep ' +
+      'the entire letter in Tagalog including religious terms ("Kaharian ng Diyos" not ' +
+      '"God\'s Kingdom," "paraisong lupa" not "paradise earth," "Jehova" for the divine name). ' +
+      'For any Bible verse cited, use wording consistent with the Bagong Sanlibutang Salin ng ' +
+      'Banal na Kasulatan (the New World Translation in Tagalog). If uncertain about exact ' +
+      'NWT Tagalog phrasing for a verse, paraphrase conservatively rather than guess — the ' +
+      'publisher will review before sending. Still label the three variants "Warm," "Brief," ' +
+      'and "Thoughtful" in English, separated by lines of three dashes (---).'
+  }
+};
+
+const BASE_SYSTEM_PROMPT = `You are a writing assistant that helps a publisher draft a personal letter to someone in their neighborhood. You are a drafting tool, not the author — the publisher will edit and personalize every letter before sending.
 
 TONE
 - Conversational, sincere, and grounded. Write like a real person who thought carefully before picking up the pen.
@@ -47,7 +77,7 @@ STRUCTURE (flexible, not formulaic)
 4. A gentle close appropriate to the letter type.
 
 SCRIPTURE USAGE
-- Use the New World Translation wording when quoting scripture.
+- Use the New World Translation wording when quoting scripture (or the language-appropriate NWT edition — see LANGUAGE section below).
 - Quote only ONE short verse per letter. Never quote multiple verses or long passages.
 - Never reproduce study notes, cross-references, or footnotes.
 
@@ -67,6 +97,14 @@ CONSTRAINTS
 - No predictions of specific dates or events.
 - If the situation involves crisis (suicidal thoughts, domestic violence, medical emergency), respond only with: "This situation may need more than a letter. Consider reaching out directly or encouraging professional support."
 
+FORMATTING — CRITICAL
+The letter must read like a real handwritten personal letter, not an AI-generated document.
+- Write in flowing prose paragraphs only. No bullet points, no dashes, no numbered lists, no em dashes used as list markers.
+- If you need to connect two thoughts, use a comma, a conjunction (and, but, so), or start a new sentence. Never use " - " or "—" as a list separator.
+- No bold text, no italics, no headers, no section labels.
+- Two or three short paragraphs feel more personal than one long block. Keep it natural.
+- Read it back as if you were the recipient opening a handwritten envelope. If it looks like a formatted document, rewrite it.
+
 OUTPUT FORMAT
 Return three variants labeled "Warm," "Brief," and "Thoughtful." Separate with a line of three dashes (---). No preamble, no explanation.`;
 
@@ -76,11 +114,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { letterType, name, situation, topic, tone, length, language = 'English' } = req.body;
+    const { letterType, name, situation, topic, tone, length, language } = req.body;
 
     if (!letterType || !tone || !length) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+
+    // Resolve language — default to English if unrecognized
+    const langKey = LANGUAGES[language] ? language : 'en';
+    const lang = LANGUAGES[langKey];
+
+    // Compose the full system prompt by appending language-specific instructions
+    const systemPrompt = BASE_SYSTEM_PROMPT + '\n\nLANGUAGE\n' + lang.instructions;
 
     const topicLabel = topic === 'none' || !topic ? 'none' : topic;
     const userMessage =
@@ -90,7 +135,7 @@ export default async function handler(req, res) {
       `Topic to weave in: ${topicLabel}\n` +
       `Tone preference: ${tone}\n` +
       `Length: ${length} words\n` +
-      `Language: ${language}`;
+      `Language: ${lang.name}`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -102,7 +147,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
         max_tokens: 1000,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: [{ role: 'user', content: userMessage }],
       }),
     });
