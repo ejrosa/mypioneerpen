@@ -1,24 +1,18 @@
-
 {
   "reviews": [
     {
+      "id": "2",
+      "name": "Rizza P., Lugoff, SC",
+      "rating": 5,
+      "comment": "I am really thankful for the PioneerPen app. It helps me organize my thoughts and topics for letter writing so much easier. I also use it when sending messages to my non-Witness friends and relatives. I just edit the message a little so it sounds more like me. It's such a wonderful, helpful, and easy to use app. 5 ⭐️ for me!",
+      "date": "2026-05-28"
+    },
+    {
       "id": "1",
-      "name": "Sharon,from Elgin, SC",
+      "name": "Sharon, from Elgin, SC",
       "rating": 5,
       "comment": "I appreciate this app so much, it makes writing ministry letters so much easier. The drafts are thoughtful and I always edit them to sound more like me — which is exactly the point.",
       "date": "2026-05-23"
-    }
-  ]
-}
-
-    },
-    {
-      "id": "2",
-      "name": "Rizza P., Lugoff, SC.",
-      "rating": 5,
-      "comment": "I am really thankful for the PioneerPen app. It helps me organize my thoughts and topics for letter writing so much easier. I also use it when sending messages to my non-Witness friends and relatives. I just edit the message a little so it sounds more like me. It’s such a wonderful, helpful, and easy to use app. 5 ⭐️ for me!
-",
-      "date": "2026-05-28"
     }
   ]
 }
