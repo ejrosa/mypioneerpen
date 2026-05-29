@@ -1021,6 +1021,23 @@ function BottomTabBar({ activeTab, setActiveTab }) {
             strokeWidth="1" strokeLinecap="round" opacity="0.7"/>
         </svg>
       )
+    },
+    {
+      id: 'reviews',
+      label: 'Reviews',
+      activeColor: '#C17BDB',   // soft purple
+      icon: (active) => (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          {/* Star shape */}
+          <path d="M12 2l2.9 5.8L21 8.9l-4.5 4.4 1.1 6.2L12 16.7l-5.6 2.8 1.1-6.2L3 8.9l6.1-.9z"
+            fill={active ? '#C17BDB' : '#DEB8EE'}
+            stroke={active ? '#9A5CB8' : '#C09ACF'}
+            strokeWidth="0.5"/>
+          {/* Inner star highlight */}
+          <path d="M12 5l1.8 3.6L17.5 9l-2.8 2.7.7 3.9L12 14l-3.4 1.6.7-3.9L6.5 9l3.7-.4z"
+            fill={active ? '#E8B4F5' : '#EDD5F8'} opacity="0.6"/>
+        </svg>
+      )
     }
   ];
 
@@ -1245,6 +1262,300 @@ function FeedbackForm({ type }) {
           Tapping send will open your email app with your message pre-filled.
           You'll just need to tap Send there to submit.
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// REVIEWS VIEW — displays curated publisher reviews loaded from
+// /reviews.json. Anyone can submit a review via email; you add approved
+// ones to reviews.json on GitHub and they appear for all users instantly.
+// ============================================================================
+
+function StarRating({ rating, size = 18, interactive = false, onRate }) {
+  const [hovered, setHovered] = useState(0);
+  const display = interactive ? (hovered || rating) : rating;
+
+  return (
+    <div style={{ display: 'flex', gap: '3px' }}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <span
+          key={star}
+          onClick={() => interactive && onRate && onRate(star)}
+          onMouseEnter={() => interactive && setHovered(star)}
+          onMouseLeave={() => interactive && setHovered(0)}
+          style={{
+            fontSize: `${size}px`,
+            color: star <= display ? '#C17BDB' : BORDER,
+            cursor: interactive ? 'pointer' : 'default',
+            transition: 'color 0.1s',
+            lineHeight: 1
+          }}
+        >
+          ★
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function ReviewsView({ onStartOver }) {
+  const [reviews, setReviews]       = useState(null); // null=loading, []=empty
+  const [showForm, setShowForm]     = useState(false);
+  const [name, setName]             = useState('');
+  const [rating, setRating]         = useState(0);
+  const [comment, setComment]       = useState('');
+  const [submitted, setSubmitted]   = useState(false);
+  const [formError, setFormError]   = useState('');
+
+  // Fetch reviews.json on mount
+  useEffect(() => {
+    fetch('/reviews.json')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => setReviews(data.reviews || []))
+      .catch(() => setReviews([]));
+  }, []);
+
+  const avgRating = reviews && reviews.length > 0
+    ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
+    : null;
+
+  const handleSubmit = () => {
+    if (!name.trim()) { setFormError('Please enter your name.'); return; }
+    if (rating === 0) { setFormError('Please select a star rating.'); return; }
+    if (!comment.trim()) { setFormError('Please write a short comment.'); return; }
+    setFormError('');
+
+    const subject = encodeURIComponent(`PioneerPen Review — ${name.trim()} (${rating}★)`);
+    const body = encodeURIComponent(
+      `Name: ${name.trim()}\nRating: ${rating} out of 5\n\nReview:\n${comment.trim()}\n\n---\nSubmitted from PioneerPen`
+    );
+    window.location.href = `mailto:eunice@ejrosa.com?subject=${subject}&body=${body}`;
+    setTimeout(() => setSubmitted(true), 400);
+  };
+
+  const formatDate = (iso) => {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  };
+
+  // ── Submitted thank-you ──────────────────────────────────────────────────
+  if (submitted) {
+    return (
+      <div className="pioneer-outer" style={{ ...styles.outer, paddingBottom: `${TAB_BAR_H + 20}px` }}>
+        <FontLink />
+        <div className="pioneer-card" style={styles.phone}>
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            gap: '16px',
+            padding: '40px 20px'
+          }}>
+            <div style={{ fontSize: '48px' }}>★</div>
+            <h2 style={{
+              fontFamily: 'Fraunces, Georgia, serif',
+              fontSize: '24px',
+              fontWeight: 500,
+              fontStyle: 'italic',
+              color: INK,
+              margin: 0
+            }}>
+              Thank you, {name}!
+            </h2>
+            <p style={{ fontSize: '14px', color: MUTED, lineHeight: 1.6, margin: 0 }}>
+              Your review has been sent. Once approved it will appear here for all publishers to see.
+            </p>
+            <button
+              onClick={() => { setSubmitted(false); setShowForm(false); setName(''); setRating(0); setComment(''); }}
+              style={{ ...styles.primaryBtn, marginTop: '8px' }}
+            >
+              Back to reviews
+            </button>
+          </div>
+          <AppFooter />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pioneer-outer" style={{ ...styles.outer, paddingBottom: `${TAB_BAR_H + 20}px` }}>
+      <FontLink />
+      <FloatingTimer />
+      <div className="pioneer-card" style={{ ...styles.phone, minHeight: 'auto' }}>
+
+        {/* ── Header ───────────────────────────────────────────────────── */}
+        <div style={{ marginBottom: '20px' }}>
+          <h1 style={{ ...styles.heading, marginBottom: '6px' }}>Publisher Reviews</h1>
+          {avgRating && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{
+                fontFamily: 'Fraunces, Georgia, serif',
+                fontSize: '36px',
+                fontWeight: 500,
+                color: '#C17BDB',
+                lineHeight: 1
+              }}>
+                {avgRating}
+              </span>
+              <div>
+                <StarRating rating={Math.round(parseFloat(avgRating))} size={20}/>
+                <div style={{ fontSize: '12px', color: MUTED, marginTop: '3px' }}>
+                  {reviews.length} review{reviews.length !== 1 ? 's' : ''}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Leave a review button ────────────────────────────────────── */}
+        {!showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            style={{
+              ...styles.primaryBtn,
+              background: '#C17BDB',
+              marginBottom: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            ★ Leave a review
+          </button>
+        )}
+
+        {/* ── Review form ──────────────────────────────────────────────── */}
+        {showForm && (
+          <div style={{
+            background: CARD,
+            border: `1px solid ${BORDER}`,
+            borderRadius: '14px',
+            padding: '18px',
+            marginBottom: '24px'
+          }}>
+            <div style={{ fontSize: '15px', fontWeight: 600, color: INK, marginBottom: '16px' }}>
+              Write a review
+            </div>
+
+            {/* Star picker */}
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ fontSize: '13px', color: MUTED, marginBottom: '6px' }}>
+                Your rating
+              </div>
+              <StarRating rating={rating} size={28} interactive onRate={setRating}/>
+            </div>
+
+            {/* Name */}
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '13px', color: MUTED, marginBottom: '6px' }}>Your name</div>
+              <input
+                style={styles.smallInput}
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="e.g. Rosa S."
+              />
+            </div>
+
+            {/* Comment */}
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ fontSize: '13px', color: MUTED, marginBottom: '6px' }}>Your review</div>
+              <textarea
+                style={{ ...styles.textInput, minHeight: '80px' }}
+                value={comment}
+                onChange={e => setComment(e.target.value)}
+                placeholder="How has PioneerPen helped your ministry?"
+              />
+            </div>
+
+            {formError && (
+              <div style={{
+                fontSize: '13px', color: ROSE,
+                marginBottom: '12px', lineHeight: 1.4
+              }}>
+                {formError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => { setShowForm(false); setFormError(''); }}
+                style={{ ...styles.backBtn, flex: 1 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                style={{ ...styles.primaryBtn, flex: 2, background: '#C17BDB' }}
+              >
+                Submit review
+              </button>
+            </div>
+
+            <div style={{
+              fontSize: '11px', color: MUTED, marginTop: '12px',
+              lineHeight: 1.5, textAlign: 'center'
+            }}>
+              Tapping Submit will open your email app with your review pre-filled.
+            </div>
+          </div>
+        )}
+
+        {/* ── Reviews list ─────────────────────────────────────────────── */}
+        {reviews === null && (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: MUTED, fontSize: '14px' }}>
+            Loading reviews…
+          </div>
+        )}
+
+        {reviews && reviews.length === 0 && (
+          <div style={{
+            textAlign: 'center', padding: '40px 0',
+            color: MUTED, fontSize: '14px',
+            fontFamily: 'Fraunces, Georgia, serif',
+            fontStyle: 'italic', lineHeight: 1.6
+          }}>
+            No reviews yet.<br/>Be the first to share your experience.
+          </div>
+        )}
+
+        {reviews && reviews.map((r, i) => (
+          <div
+            key={r.id}
+            style={{
+              padding: '16px 0',
+              borderBottom: i < reviews.length - 1 ? `1px solid ${BORDER}` : 'none'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: INK }}>
+                  {r.name}
+                </div>
+                <StarRating rating={r.rating} size={14}/>
+              </div>
+              <div style={{ fontSize: '11px', color: MUTED, marginTop: '2px' }}>
+                {formatDate(r.date)}
+              </div>
+            </div>
+            <p style={{
+              fontSize: '14px', color: INK, lineHeight: 1.6,
+              margin: 0, fontFamily: 'Fraunces, Georgia, serif',
+              fontStyle: 'italic'
+            }}>
+              "{r.comment}"
+            </p>
+          </div>
+        ))}
+
+        <AppFooter />
       </div>
     </div>
   );
@@ -2163,6 +2474,15 @@ export default function PioneerLetterWizard() {
       <>
         <FeedbackForm type="suggest" />
         <FloatingTimer />
+        <BottomTabBar activeTab={currentTab} setActiveTab={setCurrentTab} />
+      </>
+    );
+  }
+
+  if (currentTab === 'reviews') {
+    return (
+      <>
+        <ReviewsView />
         <BottomTabBar activeTab={currentTab} setActiveTab={setCurrentTab} />
       </>
     );
