@@ -192,13 +192,13 @@ Return three variants labeled "Warm," "Brief," and "Thoughtful." Separate with a
 // API CALL — the only place that talks to Claude
 // ============================================================================
 
-async function generateLetters({ letterType, name, situation, topic, tone, length }) {
+async function generateLetters({ letterType, name, situation, topic, tone, length, language }) {
   // Calls our own serverless function at /api/generate-letter, which proxies
   // to Claude with the API key kept server-side. The browser never sees the key.
   const response = await fetch('/api/generate-letter', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ letterType, name, situation, topic, tone, length, language: 'English' })
+    body: JSON.stringify({ letterType, name, situation, topic, tone, length, language: language || 'en' })
   });
 
   if (!response.ok) {
@@ -652,7 +652,7 @@ function InstallPrompt() {
 // User taps "Begin" (or "Skip" in the corner) to enter the app.
 // ============================================================================
 
-function SplashScreen({ onContinue }) {
+function SplashScreen({ onContinue, language, setLanguage }) {
   // Phase tracking for the animation sequence.
   // 0 = initial, 1 = pen animating + letters appearing, 2 = complete (button shown)
   const [phase, setPhase] = useState(0);
@@ -875,11 +875,50 @@ function SplashScreen({ onContinue }) {
             A quieter way to begin.
           </div>
 
+          {/* Language picker — fades in with the button */}
+          <div style={{
+            display: 'flex',
+            gap: '10px',
+            marginTop: '20px',
+            opacity: 0,
+            animation: phase >= 2
+              ? 'pioneer-splash-fade-in 0.6s ease-out 0.35s forwards'
+              : 'none'
+          }}>
+            {[
+              { id: 'en', label: 'English' },
+              { id: 'tl', label: 'Tagalog' }
+            ].map((lang) => {
+              const isActive = language === lang.id;
+              return (
+                <button
+                  key={lang.id}
+                  onClick={() => setLanguage(lang.id)}
+                  style={{
+                    padding: '8px 18px',
+                    background: isActive ? SAGE : 'transparent',
+                    color: isActive ? PARCHMENT : MUTED,
+                    border: `1.5px solid ${isActive ? SAGE : BORDER}`,
+                    borderRadius: '20px',
+                    fontSize: '13px',
+                    fontWeight: isActive ? 600 : 400,
+                    letterSpacing: '0.04em',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  {lang.label}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Begin button — fades in after animation completes */}
           <button
             onClick={handleDismiss}
             style={{
-              marginTop: '18px',
+              marginTop: '16px',
               padding: '15px 44px',
               background: INK,
               color: PARCHMENT,
@@ -897,7 +936,7 @@ function SplashScreen({ onContinue }) {
                 : 'none'
             }}
           >
-            Begin
+            {language === 'tl' ? 'Magsimula' : 'Begin'}
           </button>
         </div>
 
@@ -2378,6 +2417,20 @@ export default function PioneerLetterWizard() {
   // Defaults to true so every launch starts with the splash animation.
   const [showSplash, setShowSplash] = useState(true);
 
+  // Letter output language ('en' or 'tl'). Chosen on the splash screen,
+  // remembered across visits via localStorage. Falls back to English.
+  const [language, setLanguage] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pioneerLanguage');
+      if (saved === 'en' || saved === 'tl') return saved;
+    } catch {}
+    return 'en';
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('pioneerLanguage', language); } catch {}
+  }, [language]);
+
   // Bottom tab bar — controls which screen is shown after the splash.
   // 'home' = the letter wizard, 'ticket' = bug report, 'suggest' = feature idea.
   const [currentTab, setCurrentTab] = useState('home');
@@ -2416,7 +2469,7 @@ export default function PioneerLetterWizard() {
     // Final step: generate
     setLoading(true);
     try {
-      const variants = await generateLetters({ letterType, name, situation, topic, tone, length });
+      const variants = await generateLetters({ letterType, name, situation, topic, tone, length, language });
       setDrafts(variants);
     } catch (e) {
       setError("Couldn't reach the writing assistant. Check your connection and try again.");
@@ -2453,7 +2506,11 @@ export default function PioneerLetterWizard() {
     return (
       <>
         <FontLink />
-        <SplashScreen onContinue={() => setShowSplash(false)} />
+        <SplashScreen
+          onContinue={() => setShowSplash(false)}
+          language={language}
+          setLanguage={setLanguage}
+        />
       </>
     );
   }
@@ -2525,6 +2582,7 @@ export default function PioneerLetterWizard() {
           topic={topic}
           tone={tone}
           length={length}
+          language={language}
           onStartOver={handleStartOver}
         />
         <FloatingTimer />
@@ -2606,6 +2664,7 @@ function DraftsView({
   topic,
   tone,
   length,
+  language,
   onStartOver
 }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -2625,7 +2684,7 @@ function DraftsView({
 
     setRefreshing('all');
     try {
-      const variants = await generateLetters({ letterType, name, situation, topic, tone, length });
+      const variants = await generateLetters({ letterType, name, situation, topic, tone, length, language });
       setDrafts(variants);
       setSelectedIndex(0);
       setEditedText(null);
@@ -2642,7 +2701,7 @@ function DraftsView({
 
     setRefreshing(selectedIndex);
     try {
-      const variants = await generateLetters({ letterType, name, situation, topic, tone, length });
+      const variants = await generateLetters({ letterType, name, situation, topic, tone, length, language });
       // Pick a replacement at random from the new batch so the refreshed
       // draft differs from what the user just saw, even if the model output similar content.
       const replacement = variants[Math.floor(Math.random() * variants.length)] || variants[0];
