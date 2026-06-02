@@ -2211,6 +2211,23 @@ function AboutModal({ onClose }) {
   const websiteUrl = 'https://ejrosa.com';
   const paypalUrl = PAYPAL_URL;
 
+  // What's New changelog — loaded from /changelog.json
+  const [showChangelog, setShowChangelog] = useState(false);
+  const [releases, setReleases] = useState(null);
+
+  useEffect(() => {
+    if (!showChangelog || releases !== null) return;
+    fetch('/changelog.json')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => setReleases(data.releases || []))
+      .catch(() => setReleases([]));
+  }, [showChangelog, releases]);
+
+  const formatReleaseDate = (iso) => {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  };
+
   return (
     <div
       className="no-print"
@@ -2381,9 +2398,114 @@ function AboutModal({ onClose }) {
             </>
           )}
 
+          {/* What's New — opens the changelog */}
           <div style={{
             borderTop: `1px solid ${BORDER}`,
             marginTop: '20px',
+            paddingTop: '14px'
+          }}>
+            <button
+              onClick={() => setShowChangelog(!showChangelog)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: '14px',
+                fontWeight: 600,
+                color: INK,
+                padding: '4px 0'
+              }}
+            >
+              <span>✦ What's New</span>
+              <span style={{
+                color: MUTED,
+                fontSize: '13px',
+                transform: showChangelog ? 'rotate(180deg)' : 'none',
+                transition: 'transform 0.2s'
+              }}>
+                ⌄
+              </span>
+            </button>
+
+            {showChangelog && (
+              <div style={{ marginTop: '12px' }}>
+                {releases === null && (
+                  <div style={{ fontSize: '13px', color: MUTED, padding: '8px 0' }}>
+                    Loading…
+                  </div>
+                )}
+                {releases && releases.length === 0 && (
+                  <div style={{ fontSize: '13px', color: MUTED, padding: '8px 0' }}>
+                    No updates to show yet.
+                  </div>
+                )}
+                {releases && releases.map((rel, i) => (
+                  <div
+                    key={rel.version}
+                    style={{
+                      paddingBottom: '16px',
+                      marginBottom: '16px',
+                      borderBottom: i < releases.length - 1 ? `1px solid ${BORDER}` : 'none'
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      gap: '8px',
+                      marginBottom: '6px'
+                    }}>
+                      <span style={{
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        color: SAGE,
+                        background: '#EDF1EA',
+                        padding: '1px 7px',
+                        borderRadius: '6px'
+                      }}>
+                        v{rel.version}
+                      </span>
+                      <span style={{
+                        fontFamily: 'Fraunces, Georgia, serif',
+                        fontSize: '14px',
+                        fontStyle: 'italic',
+                        color: INK,
+                        fontWeight: 500
+                      }}>
+                        {rel.title}
+                      </span>
+                    </div>
+                    <div style={{
+                      fontSize: '11px',
+                      color: MUTED,
+                      marginBottom: '8px'
+                    }}>
+                      {formatReleaseDate(rel.date)}
+                    </div>
+                    <ul style={{
+                      margin: 0,
+                      paddingLeft: '18px',
+                      fontSize: '13px',
+                      color: INK,
+                      lineHeight: 1.6
+                    }}>
+                      {rel.changes.map((c, j) => (
+                        <li key={j} style={{ marginBottom: '3px' }}>{c}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{
+            borderTop: `1px solid ${BORDER}`,
+            marginTop: '8px',
             paddingTop: '14px',
             fontSize: '12px',
             color: MUTED,
