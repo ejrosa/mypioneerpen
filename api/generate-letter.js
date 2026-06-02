@@ -22,16 +22,12 @@ const LANGUAGES = {
   tl: {
     name: 'Tagalog',
     instructions:
-      'Write the letter in natural, fluent Tagalog — not English translated word-for-word. ' +
-      'Use appropriate formality: consistent po/opo throughout, since the recipient is ' +
-      'typically a stranger or elder. Avoid Taglish (do not code-switch into English) — keep ' +
-      'the entire letter in Tagalog including religious terms ("Kaharian ng Diyos" not ' +
-      '"God\'s Kingdom," "paraisong lupa" not "paradise earth," "Jehova" for the divine name). ' +
-      'For any Bible verse cited, use wording consistent with the Bagong Sanlibutang Salin ng ' +
-      'Banal na Kasulatan (the New World Translation in Tagalog). If uncertain about exact ' +
-      'NWT Tagalog phrasing for a verse, paraphrase conservatively rather than guess — the ' +
-      'publisher will review before sending. Still label the three variants "Warm," "Brief," ' +
-      'and "Thoughtful" in English, separated by lines of three dashes (---).'
+      'Write the letter in natural, conversational Tagalog — the way a real Filipino publisher would actually write to a neighbor. ' +
+      'Use po/opo for politeness and respect, since letters are usually to people you have not met. ' +
+      'Natural Taglish is fine and often sounds more genuine — it is okay to keep common English words that Filipinos normally use in everyday speech (words like "appointment," "text," "message," "stress," "family") rather than forcing stiff pure-Tagalog equivalents. ' +
+      'However, keep core religious terms in Tagalog where they are commonly used that way: "Kaharian ng Diyos," "paraisong lupa," and "Jehova" for the divine name. ' +
+      'For any Bible verse cited, use wording consistent with the Bagong Sanlibutang Salin ng Banal na Kasulatan (the New World Translation in Tagalog). If unsure of the exact NWT Tagalog wording, paraphrase the thought conservatively rather than guess — the publisher will review before sending. ' +
+      'The goal is warmth and naturalness, not textbook formality. Still label the three variants "Warm," "Brief," and "Thoughtful" in English, separated by lines of three dashes (---).'
   }
 };
 
