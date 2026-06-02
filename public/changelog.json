@@ -1,0 +1,67 @@
+{
+  "releases": [
+    {
+      "version": "1.5",
+      "date": "2026-06-01",
+      "title": "Tagalog letters",
+      "changes": [
+        "Added Tagalog as a letter language — choose English or Tagalog on the start screen",
+        "Your language choice is remembered for next time",
+        "Letters in Tagalog use natural, conversational language with proper politeness"
+      ]
+    },
+    {
+      "version": "1.4",
+      "date": "2026-05-28",
+      "title": "Publisher Reviews",
+      "changes": [
+        "Added a Reviews page where publishers can rate and review the app",
+        "See the average rating and read what other publishers are saying",
+        "Leave your own review right from the app"
+      ]
+    },
+    {
+      "version": "1.3",
+      "date": "2026-05-24",
+      "title": "Ministry time tracker",
+      "changes": [
+        "Added a floating timer to track your letter-writing time",
+        "Start and stop with one tap, sessions are saved automatically",
+        "View your sessions and see your monthly total",
+        "Sessions are remembered even if you close the app"
+      ]
+    },
+    {
+      "version": "1.2",
+      "date": "2026-05-20",
+      "title": "Feedback and ideas",
+      "changes": [
+        "Added Tickets and Ideas tabs so you can report issues or suggest features",
+        "Added an In the News section for timely letter-writing inspiration",
+        "Letters now read more naturally, like a real handwritten note"
+      ]
+    },
+    {
+      "version": "1.1",
+      "date": "2026-05-15",
+      "title": "A warmer welcome",
+      "changes": [
+        "Added a start screen with a fountain pen animation",
+        "Refreshed the look and feel throughout the app",
+        "Improved printing for letters and envelopes on phones and tablets"
+      ]
+    },
+    {
+      "version": "1.0",
+      "date": "2026-05-10",
+      "title": "PioneerPen launches",
+      "changes": [
+        "Draft warm, personal ministry letters in seconds",
+        "Choose from five letter types and three tones",
+        "Get three drafts to choose from, then edit to sound like you",
+        "Print your letter or address an envelope",
+        "Install to your home screen like a real app"
+      ]
+    }
+  ]
+}
