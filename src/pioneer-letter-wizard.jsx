@@ -2152,7 +2152,7 @@ function AppFooter() {
       >
         <div>© 2026 EJ Rosa · PioneerPen</div>
         <div style={{ marginTop: '4px' }}>
-          Your letters are private. Nothing is saved.
+          Your letters are private and not stored. Timer sessions are saved only on this device.
           {' '}
           <button
             onClick={() => setShowAbout(true)}
@@ -2308,9 +2308,12 @@ function AboutModal({ onClose }) {
             Privacy
           </h3>
           <p style={{ margin: '0 0 14px 0' }}>
-            Your letters are not stored. Each request is independent and
-            private — nothing is saved to an account, a database, or shared
-            with anyone. When you close or refresh the app, nothing remains.
+            Your letters are private and not stored. Each request is
+            independent — your letters are not saved to an account or a
+            database, or shared with anyone. When you close or refresh the
+            app, your letters are gone. Your timer and logged sessions are
+            saved only on this device, along with your language, paper and
+            font choices.
           </p>
 
           <h3 style={{
